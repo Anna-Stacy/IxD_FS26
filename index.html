@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bremen Town Musicians Interactive Story</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  </head>
+  <body>
+    <main id="app" aria-label="Bremen Town Musicians interactive story">
+      <div id="canvas-wrap"></div>
+      <section id="hud" aria-live="polite">
+        <div class="status-row">
+          <button id="connect-serial" type="button">Connect Arduino</button>
+          <button id="demo-start" type="button">Start Demo</button>
+          <span id="serial-status">Serial: not connected</span>
+          <span id="sensor-status">Light: -- | Slider: --</span>
+        </div>
+        <div id="hint">
+          Keyboard fallback: Space/Enter = white, 1 = red, 2 = yellow, 3 = green, arrows/A/D = slider, L = light start.
+        </div>
+      </section>
+    </main>
+    <script src="sketch.js"></script>
+  </body>
+</html>
