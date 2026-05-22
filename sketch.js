@@ -2,6 +2,7 @@
 
 const ASSET_DIR = "Bremen Image Material";
 const LIGHT_START_THRESHOLD = 650;
+const MINI_GAME_LIGHT_THRESHOLD = 650;
 const SERIAL_BAUD_RATE = 9600;
 
 const COLORS = {
@@ -229,29 +230,29 @@ function drawStart() {
   drawBackground("bg_farm");
   drawPanel(92, 80, 620, 460);
   fill(COLORS.paper);
-  textSize(58);
+  textSize(54);
   textStyle(BOLD);
-  text("The Bremen", 134, 158);
-  text("Town Musicians", 134, 224);
+  text("The Bremen", 132, 150);
+  text("Town Musicians", 132, 214);
   textStyle(NORMAL);
-  textSize(25);
-  textLeading(36);
+  textSize(23);
+  textLeading(32);
   text(
     `Cover the light sensor until it reaches ${LIGHT_START_THRESHOLD} or higher. The story begins from this page once the threshold is met.`,
-    136,
-    282,
+    134,
+    268,
     520,
-    160
+    130
   );
 
-  drawButtonGuide(136, 438, COLORS.white, "White", "Continue");
-  drawButtonGuide(292, 438, COLORS.red, "Red", "Choice 1");
-  drawButtonGuide(448, 438, COLORS.yellow, "Yellow", "Choice 2");
-  drawButtonGuide(604, 438, COLORS.green, "Green", "Choice 3");
+  drawButtonGuide(164, 438, COLORS.white, "White", "Continue");
+  drawButtonGuide(316, 438, COLORS.red, "Red", "Choice 1");
+  drawButtonGuide(468, 438, COLORS.yellow, "Yellow", "Choice 2");
+  drawButtonGuide(620, 438, COLORS.green, "Green", "Choice 3");
 
   fill(COLORS.paper);
   textSize(22);
-  text(`Current light: ${lastLightValue ?? "--"}`, 136, 522);
+  text(`Current light: ${lastLightValue ?? "--"}`, 134, 548);
 }
 
 function drawPassiveScene() {
@@ -280,9 +281,10 @@ function drawTransitionScene() {
   if (resultType === "bad") {
     textLines.push("The donkey has no reliable companion for the plan.");
   } else {
-    textLines.push("The companions prepare to form a noisy tower at the window.");
+    textLines.push(`Raise the light sensor to ${MINI_GAME_LIGHT_THRESHOLD} or higher to begin the tower game.`);
   }
-  drawStoryText("The House in the Forest", textLines.join(" "), "Press the white button to continue.");
+  const footer = resultType === "bad" ? "Press the white button to continue." : "Use the light sensor to start the mini-game.";
+  drawStoryText("The House in the Forest", textLines.join(" "), footer);
   drawParty();
 }
 
@@ -301,10 +303,10 @@ function drawMiniGame() {
 
   const donkeyX = map(lastSliderValue, 0, 1023, 132, 1244);
   imageMode(CENTER);
-  image(assets.donkey_icon, donkeyX, 642, 190, 106);
+  image(assets.donkey_icon, donkeyX, 626, 300, 168);
 
   miniGame.fallers.forEach((faller) => {
-    image(assets[`${faller.kind}_icon`], faller.x, faller.y, 90, 50);
+    image(assets[`${faller.kind}_icon`], faller.x, faller.y, 144, 80);
   });
   imageMode(CORNER);
 
@@ -362,14 +364,16 @@ function drawChoiceCard(x, y, w, h, option) {
 function drawButtonGuide(x, y, color, label, action) {
   fill(color);
   stroke(0, 0, 0, 80);
-  ellipse(x, y, 34, 34);
+  ellipse(x, y, 38, 38);
   noStroke();
   fill(COLORS.paper);
-  textSize(16);
+  textSize(15);
   textStyle(BOLD);
-  text(label, x - 42, y + 46, 92);
+  textAlign(CENTER, TOP);
+  text(label, x - 55, y + 32, 110);
   textStyle(NORMAL);
-  text(action, x - 42, y + 68, 110);
+  text(action, x - 55, y + 54, 110);
+  textAlign(LEFT, BASELINE);
 }
 
 function drawParty() {
@@ -388,7 +392,7 @@ function drawParty() {
 function handleWhiteButton() {
   if (scene === "start") startStory();
   else if (scene === "passive") advancePassive();
-  else if (scene === "transition") startEndingSequence();
+  else if (scene === "transition" && resultType === "bad") startEndingSequence();
   else if (scene === "ending") resetStory();
 }
 
@@ -489,7 +493,7 @@ function createMiniGame() {
     missed: 0,
     target: resultType === "good" ? 8 : 5,
     nextSpawnAt: 0,
-    endsAt: millis() + 22000,
+    endsAt: millis() + 35000,
   };
 }
 
@@ -509,7 +513,7 @@ function updateMiniGame() {
   for (let i = miniGame.fallers.length - 1; i >= 0; i -= 1) {
     const faller = miniGame.fallers[i];
     faller.y += faller.speed;
-    if (faller.y > 590 && abs(faller.x - donkeyX) < 96) {
+    if (faller.y > 560 && abs(faller.x - donkeyX) < 138) {
       miniGame.caught += 1;
       miniGame.fallers.splice(i, 1);
     } else if (faller.y > 800) {
@@ -613,6 +617,7 @@ function parseSerialLine(line) {
     if (Number.isFinite(value)) {
       lastLightValue = constrain(value, 0, 1023);
       if (scene === "start" && lastLightValue >= LIGHT_START_THRESHOLD) startStory();
+      if (scene === "transition" && resultType !== "bad" && lastLightValue >= MINI_GAME_LIGHT_THRESHOLD) startEndingSequence();
     }
   }
 

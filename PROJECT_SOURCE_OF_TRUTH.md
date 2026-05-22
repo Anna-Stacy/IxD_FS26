@@ -53,7 +53,7 @@ The implemented repo sketch expects:
 | Yellow button | Choice 2 | D4 | `B3` |
 | Green button | Choice 3 | D5 | `B4` |
 | Slider / potentiometer | Mini-game horizontal control | A0 | `S:<0-1023>` |
-| Light sensor | Starts story from start page | A1 | `L:<0-1023>` |
+| Light sensor | Starts story and starts mini-game | A1 | `L:<0-1023>` |
 
 Buttons use `INPUT_PULLUP`, so they are active LOW:
 
@@ -91,11 +91,11 @@ SLIDER:512
 LIGHT:700
 ```
 
-## Light Sensor Start Rule
+## Light Sensor Start Rules
 
 The story stays on the start page until the light sensor reaches the configured threshold.
 
-Current threshold in `sketch.js`:
+Current story threshold in `sketch.js`:
 
 ```js
 const LIGHT_START_THRESHOLD = 650;
@@ -103,7 +103,13 @@ const LIGHT_START_THRESHOLD = 650;
 
 When the app receives `L:<value>` and `value >= 650`, the story starts from the first scene.
 
-This value may need calibration after testing with the real sensor, room lighting, and physical enclosure.
+The mini-game also waits for the light sensor. At the house-in-the-forest scene, if the ending is not bad, the white button does not start the mini-game. The mini-game starts when the app receives a light value at or above:
+
+```js
+const MINI_GAME_LIGHT_THRESHOLD = 650;
+```
+
+These values may need calibration after testing with the real sensor, room lighting, and physical enclosure.
 
 ## Story Structure
 
@@ -200,7 +206,7 @@ If the cat is the only animal that joined, the app resolves to the bad ending be
 
 ## Mini-Game
 
-The mini-game starts after the house-in-the-forest scene if the result is not bad.
+The mini-game starts after the house-in-the-forest scene if the result is not bad and the light sensor reaches the mini-game threshold.
 
 Purpose:
 
@@ -213,6 +219,7 @@ Current behavior:
 - Good ending mini-game uses dog, cat, and rooster icons.
 - Neutral ending mini-game uses only dog and/or rooster.
 - Bad ending skips the mini-game.
+- The current timer is 35 seconds.
 
 The mini-game currently does not change the final ending. It is an interaction step before showing the ending.
 
@@ -270,4 +277,3 @@ The authoritative implementation is:
 - The Arduino connection requires a user click on `Connect Arduino`; browsers do not allow automatic serial connection.
 - The light threshold should be tested on the real physical setup and adjusted if needed.
 - The Arduino sketch in the repo is now intended to match the described four-button, slider, and light-sensor controller.
-
