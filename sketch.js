@@ -6,13 +6,56 @@ const MINI_GAME_LIGHT_THRESHOLD = 650;
 const SERIAL_BAUD_RATE = 9600;
 
 const COLORS = {
-  ink: "#23180f",
-  paper: "#fff5dc",
-  shadow: "rgba(0, 0, 0, 0.58)",
-  white: "#f6f2e8",
-  red: "#c94337",
-  yellow: "#e0bc35",
-  green: "#4d9b55",
+  ink: "#2b1b10",
+  paper: "#fff4db",
+  muted: "#dacfb9",
+  panel: "rgba(15, 13, 11, 0.68)",
+  panelStrong: "rgba(15, 13, 11, 0.82)",
+  border: "rgba(255, 244, 219, 0.26)",
+  accent: "#e8c86b",
+};
+
+const FILES = {
+  start: "starting page.png",
+  intro: "the old mill donkey intro.png",
+  road: "bg_road for walking.png",
+  dogGood: "meeting the dog  happy and neutral choices .png",
+  dogBad: "meeting the dog bad choice.png",
+  catDonkey: "meeting cat only donkey bad and neutral choice.png",
+  catDog: "meeting the cat with donkey and dog.png",
+  catGood: "Donkey meeting cat good choice.png",
+  roosterDonkey: "meeting the rooster with only donkey.png",
+  roosterDog: "meeting the rooster with donkey and dog.png",
+  roosterCat: "meeting rooster with donkey and cat.png",
+  roosterAll: "meeting the rooster with donkey cat and dog.png",
+  house: "bg_house for first view of the house and for the sleeping scene.png",
+  lookingInside: "looking inside the hut seeing robbers.png",
+  crash: "Broken glass ambush of towereed animals neutral and good choices .png",
+  feast: "Feast scene good and neutral choices.png",
+  darkHouse: "scene house with no lights before robbers go inside and after.png",
+  robberInside: "robber inside the house.png",
+  robberFleeing: "robber fleeing the house.png",
+  goodAnimals: "ending_good.png",
+  goodFinal: "good ending after animals are shown last image.png",
+  neutralFinal: "neutral ending background after animal ending is shown last image.png",
+  bad: "ending_bad.png",
+  neutralDog: "ending_neutral_donkey_dog.png",
+  neutralCat: "ending_neutral_donkey_cat.png",
+  neutralRooster: "ending_neutral_donkey_rooster.png",
+  neutralDogCat: "ending_neutral_donkey_dog_cat.png",
+  neutralDogRooster: "ending_neutral_donkey_dog_rooster.png",
+  neutralCatRooster: "ending neutral_donkey_cat_rooster.png",
+  redContinue: "UI Buttons red button choice continue.png",
+  yellowChoice1: "UI Buttons yellow button choice 1.png",
+  greenChoice2: "UI Buttons green button choice 2.png",
+  whiteChoice3: "UI Buttons white button choice 3.png",
+  sliderUi: "Slider UI.png",
+  lightUi: "Light sensor UI.png",
+  textBox: "text box ui.png",
+  donkeyBody: "full body transparent background.png",
+  dogBody: "dog sitting full body transparent background.png",
+  catBody: "cat full body transparent background.png",
+  roosterBody: "rooster full body transparent background.png",
 };
 
 const assets = {};
@@ -23,147 +66,19 @@ let serialConnected = false;
 let lastLightValue = null;
 let lastSliderValue = 512;
 
-let scene = "start";
-let sceneIndex = 0;
-let currentChoices = [];
-let resultType = null;
-let endingAsset = null;
+let appState = "start";
+let canvasSize = { scale: 1, x: 0, y: 0 };
+let pages = [];
+let pageIndex = 0;
+let currentChoice = null;
 let companions = { dog: false, cat: false, rooster: false };
-let choiceHistory = [];
+let resultType = null;
 let miniGame = null;
-let canvasSize = { w: 1376, h: 768, scale: 1, x: 0, y: 0 };
-
-const passiveScenes = [
-  {
-    id: "intro",
-    bg: "bg_farm",
-    title: "The Donkey Leaves the Mill",
-    text:
-      "An old donkey, no longer wanted at the mill, runs away toward Bremen. He believes there may still be a place for him as a musician.",
-  },
-  {
-    id: "dog_intro",
-    bg: "bg_road",
-    title: "The Tired Dog",
-    text:
-      "On the road he finds a hunting dog, panting and exhausted. The dog has also been cast aside because he is old.",
-  },
-];
-
-const choiceScenes = {
-  dog: {
-    bg: "bg_road",
-    title: "Invite the Dog",
-    question: "How should the donkey answer the dog?",
-    options: [
-      {
-        color: "red",
-        label: "Welcome him warmly",
-        text:
-          "Come with me to Bremen. I will play the lute, and you can beat the drums.",
-        effect: "good",
-        joins: "dog",
-      },
-      {
-        color: "yellow",
-        label: "Invite him bluntly",
-        text:
-          "Our old bones might still fit in Bremen. Join me, if you want something better.",
-        effect: "neutral",
-        joins: "dog",
-      },
-      {
-        color: "green",
-        label: "Leave him behind",
-        text:
-          "I will leave you to rest. I am off to become a musician.",
-        effect: "bad",
-      },
-    ],
-  },
-  cat: {
-    bg: "bg_forest",
-    title: "The Cat by the Road",
-    question: "The cat has escaped danger too. What does the donkey say?",
-    options: [
-      {
-        color: "red",
-        label: "Offer a place in the band",
-        text:
-          "Come with us to Bremen. You understand night music and can help us win an audience.",
-        effect: "good",
-        joins: "cat",
-      },
-      {
-        color: "yellow",
-        label: "Speak without tact",
-        text:
-          "One last adventure would be better than waiting here for the end.",
-        effect: "neutral",
-      },
-      {
-        color: "green",
-        label: "Mock the cat",
-        text:
-          "You look too old for adventure. Perhaps your muscles are not what they used to be.",
-        effect: "bad",
-      },
-    ],
-  },
-  rooster: {
-    bg: "bg_farm",
-    title: "The Rooster on the Gate",
-    question: "The rooster cries because he fears the cook. What is the donkey's answer?",
-    options: [
-      {
-        color: "red",
-        label: "Encourage his voice",
-        text:
-          "Join our band. Your voice could amaze the crowds in Bremen.",
-        effect: "good",
-        joins: "rooster",
-      },
-      {
-        color: "yellow",
-        label: "Be direct but useful",
-        text:
-          "Come away with us. You can always find something better than death.",
-        effect: "neutral",
-        joins: "rooster",
-      },
-      {
-        color: "green",
-        label: "Insult his singing",
-        text:
-          "With such a shrill voice, you may as well put it to use somewhere else.",
-        effect: "bad",
-      },
-    ],
-  },
-};
+let fade = null;
 
 function preload() {
-  [
-    "bg_farm",
-    "bg_forest",
-    "bg_house",
-    "bg_inside",
-    "bg_road",
-    "donkey",
-    "dog",
-    "cat",
-    "rooster",
-    "donkey_icon",
-    "dog_icon",
-    "cat_icon",
-    "rooster_icon",
-    "ending_good",
-    "ending_bad",
-    "ending_mid_donkey_dog",
-    "ending_mid_donkey_rooster",
-    "ending_mid_donkey_dog_rooster",
-  ].forEach((name) => {
-    assets[name] = loadImage(`${ASSET_DIR}/${name}.png`);
+  Object.entries(FILES).forEach(([key, filename]) => {
+    assets[key] = loadImage(`${ASSET_DIR}/${filename}`);
   });
 }
 
@@ -180,14 +95,19 @@ function setup() {
 }
 
 function draw() {
-  renderFrame(() => {
-    if (scene === "start") drawStart();
-    else if (scene === "passive") drawPassiveScene();
-    else if (scene === "choice") drawChoiceScene();
-    else if (scene === "transition") drawTransitionScene();
-    else if (scene === "minigame") drawMiniGame();
-    else if (scene === "ending") drawEnding();
-  });
+  background(16);
+  push();
+  translate(canvasSize.x, canvasSize.y);
+  scale(canvasSize.scale);
+
+  if (appState === "start") drawStart();
+  else if (appState === "page") drawNarrativePage();
+  else if (appState === "choice") drawChoicePage();
+  else if (appState === "miniIntro") drawMiniIntro();
+  else if (appState === "miniGame") drawMiniGame();
+  else if (appState === "fade") drawFade();
+
+  pop();
 }
 
 function windowResized() {
@@ -201,355 +121,585 @@ function resizeCanvasToWrap() {
   resizeCanvas(w, h);
   const scale = Math.min(width / 1376, height / 768);
   canvasSize = {
-    w: 1376,
-    h: 768,
     scale,
     x: (width - 1376 * scale) / 2,
     y: (height - 768 * scale) / 2,
   };
 }
 
-function renderFrame(drawFn) {
-  background(16);
-  push();
-  translate(canvasSize.x, canvasSize.y);
-  scale(canvasSize.scale);
-  drawFn();
-  pop();
-}
-
-function drawBackground(name) {
-  const img = assets[name] || assets.bg_road;
-  image(img, 0, 0, 1376, 768);
+function drawSceneImage(assetKey, overlay = 52) {
+  const img = assets[assetKey] || assets.road;
+  const scale = Math.min(1376 / img.width, 768 / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  const dx = (1376 - dw) / 2;
+  const dy = (768 - dh) / 2;
   noStroke();
-  fill(0, 0, 0, 95);
+  fill(12);
   rect(0, 0, 1376, 768);
+  image(img, dx, dy, dw, dh);
+  if (overlay > 0) {
+    noStroke();
+    fill(0, 0, 0, overlay);
+    rect(0, 0, 1376, 768);
+  }
 }
 
 function drawStart() {
-  drawBackground("bg_farm");
-  drawPanel(92, 80, 620, 460);
-  fill(COLORS.paper);
-  textSize(54);
+  drawSceneImage("start", 48);
+  drawTextBoxUi(74, 74, 610, 482);
+  fill(COLORS.ink);
   textStyle(BOLD);
-  text("The Bremen", 132, 150);
-  text("Town Musicians", 132, 214);
+  textSize(50);
+  text("The Bremen", 116, 142);
+  text("Town Musicians", 116, 200);
+
   textStyle(NORMAL);
   textSize(23);
   textLeading(32);
   text(
-    `Cover the light sensor until it reaches ${LIGHT_START_THRESHOLD} or higher. The story begins from this page once the threshold is met.`,
-    134,
-    268,
-    520,
-    130
+    `Cover the light sensor until the value is ${LIGHT_START_THRESHOLD} or higher. The story begins from this page once the threshold is met.`,
+    116,
+    258,
+    522,
+    128
   );
 
-  drawButtonGuide(164, 438, COLORS.white, "White", "Continue");
-  drawButtonGuide(316, 438, COLORS.red, "Red", "Choice 1");
-  drawButtonGuide(468, 438, COLORS.yellow, "Yellow", "Choice 2");
-  drawButtonGuide(620, 438, COLORS.green, "Green", "Choice 3");
-
-  fill(COLORS.paper);
-  textSize(22);
-  text(`Current light: ${lastLightValue ?? "--"}`, 134, 548);
+  drawUiImage("lightUi", 112, 406, 134, 98);
+  drawUiImage("redContinue", 112, 506, 42, 42);
+  fill(COLORS.ink);
+  textSize(21);
+  text(`Current light: ${lastLightValue ?? "--"}`, 270, 452);
+  textSize(18);
+  fill("#684221");
+  text("Red continues. Yellow, green, and white choose when choices appear.", 170, 534, 468);
 }
 
-function drawPassiveScene() {
-  const entry = passiveScenes[sceneIndex];
-  drawBackground(entry.bg);
-  drawStoryText(entry.title, entry.text, "Press the white button to continue.");
-  drawParty();
+function drawNarrativePage() {
+  const page = pages[pageIndex];
+  drawSceneImage(page.image, page.overlay ?? 46);
+  drawTextBox(page.text, "Press red to continue.", page.position || "left");
 }
 
-function drawChoiceScene() {
-  const entry = currentChoices[0];
-  drawBackground(entry.bg);
-  drawStoryText(entry.title, entry.question, "Choose with red, yellow, or green.");
-  entry.options.forEach((option, index) => {
-    drawChoiceCard(120 + index * 386, 510, 340, 146, option);
+function drawChoicePage() {
+  drawSceneImage(currentChoice.image, currentChoice.overlay ?? 42);
+  drawTextBox(currentChoice.question, "Choose with yellow, green, or white.", "top");
+  currentChoice.options.forEach((option, index) => {
+    drawChoiceCard(82 + index * 430, 504, 386, 190, option, index);
   });
-  drawParty();
 }
 
-function drawTransitionScene() {
-  drawBackground("bg_house");
-  const textLines = [
-    "Night falls before Bremen is reached.",
-    "A light shines from a robber's house in the forest.",
-  ];
-  if (resultType === "bad") {
-    textLines.push("The donkey has no reliable companion for the plan.");
-  } else {
-    textLines.push(`Raise the light sensor to ${MINI_GAME_LIGHT_THRESHOLD} or higher to begin the tower game.`);
-  }
-  const footer = resultType === "bad" ? "Press the white button to continue." : "Use the light sensor to start the mini-game.";
-  drawStoryText("The House in the Forest", textLines.join(" "), footer);
-  drawParty();
+function drawMiniIntro() {
+  drawSceneImage("lookingInside", 50);
+  drawTextBox(
+    `The companions have a plan: they will climb into a tower and make the most terrible music the robbers have ever heard. Cover the light sensor until the value is ${MINI_GAME_LIGHT_THRESHOLD} or higher to start the stacking game.`,
+    "Use the light sensor to start.",
+    "left"
+  );
+  drawUiImage("lightUi", 1110, 66, 150, 108);
 }
 
 function drawMiniGame() {
-  drawBackground("bg_inside");
+  drawSceneImage("lookingInside", 34);
   updateMiniGame();
 
+  drawPanel(54, 44, 468, 114, COLORS.panelStrong);
   fill(COLORS.paper);
-  textSize(34);
   textStyle(BOLD);
-  text("Catch the Falling Musicians", 78, 74);
-  textStyle(NORMAL);
-  textSize(20);
-  text("Use the slider to move the donkey. Catch enough companions before time runs out.", 78, 110);
-  text(`Caught: ${miniGame.caught}/${miniGame.target}   Missed: ${miniGame.missed}`, 78, 142);
-
-  const donkeyX = map(lastSliderValue, 0, 1023, 132, 1244);
-  imageMode(CENTER);
-  image(assets.donkey_icon, donkeyX, 626, 300, 168);
-
-  miniGame.fallers.forEach((faller) => {
-    image(assets[`${faller.kind}_icon`], faller.x, faller.y, 144, 80);
-  });
-  imageMode(CORNER);
-
-  const remaining = max(0, Math.ceil((miniGame.endsAt - millis()) / 1000));
-  fill(COLORS.paper);
   textSize(28);
-  text(`Time: ${remaining}`, 1156, 74);
-}
-
-function drawEnding() {
-  drawBackground(endingAsset);
-  const copy = getEndingCopy();
-  drawStoryText(copy.title, copy.text, "Press the white button to restart.");
-}
-
-function drawStoryText(title, body, footer) {
-  drawPanel(78, 76, 670, 360);
-  fill(COLORS.paper);
-  textSize(42);
-  textStyle(BOLD);
-  text(title, 120, 132, 590);
+  text("Stack the Musicians", 82, 86);
   textStyle(NORMAL);
-  textSize(25);
-  textLeading(35);
-  text(body, 120, 184, 590, 170);
-  fill(255, 229, 154);
-  textSize(21);
-  text(footer, 120, 390, 590);
+  textSize(18);
+  text(`Catch the falling companion with the donkey. Slider value: ${Math.round(lastSliderValue)}`, 82, 122);
+  drawUiImage("sliderUi", 928, 52, 324, 65);
+
+  imageMode(CENTER);
+  drawStackedDonkeyAndCompanions();
+  if (miniGame.faller) {
+    const img = assets[`${miniGame.faller.kind}Body`];
+    image(img, miniGame.faller.x, miniGame.faller.y, animalWidth(miniGame.faller.kind), animalHeight(miniGame.faller.kind));
+  }
+  imageMode(CORNER);
 }
 
-function drawPanel(x, y, w, h) {
+function drawFade() {
+  drawSceneImage(fade.image, 44);
+  const elapsed = millis() - fade.startedAt;
+  const alpha = elapsed < 500 ? map(elapsed, 0, 500, 0, 255) : map(elapsed, 500, 1000, 255, 0);
+  fill(0, 0, 0, constrain(alpha, 0, 255));
+  rect(0, 0, 1376, 768);
+  if (elapsed >= 1000) {
+    pages = buildPostMiniPages();
+    pageIndex = 0;
+    appState = "page";
+    fade = null;
+  }
+}
+
+function drawTextBox(body, footer, position) {
+  const box = getTextBox(position);
+  drawTextBoxUi(box.x, box.y, box.w, box.h);
+  fill(COLORS.ink || "#2b1b10");
+  textStyle(NORMAL);
+  textSize(box.fontSize);
+  textLeading(box.leading);
+  text(body, box.x + 34, box.y + 34, box.w - 68, box.h - 92);
+  fill("#5a3518");
+  textSize(18);
+  if (footer.toLowerCase().includes("red")) {
+    drawUiImage("redContinue", box.x + 30, box.y + box.h - 58, 42, 42);
+    text(footer, box.x + 84, box.y + box.h - 32, box.w - 118);
+  } else {
+    text(footer, box.x + 34, box.y + box.h - 36, box.w - 68);
+  }
+}
+
+function getTextBox(position) {
+  if (position === "top") return { x: 74, y: 48, w: 1228, h: 178, fontSize: 23, leading: 31 };
+  if (position === "right") return { x: 716, y: 82, w: 586, h: 394, fontSize: 23, leading: 32 };
+  if (position === "bottom") return { x: 84, y: 514, w: 1208, h: 180, fontSize: 22, leading: 30 };
+  return { x: 74, y: 82, w: 610, h: 420, fontSize: 23, leading: 32 };
+}
+
+function drawPanel(x, y, w, h, colorValue) {
   noStroke();
-  fill(COLORS.shadow);
+  fill(colorValue);
   rect(x, y, w, h, 8);
-  stroke(255, 245, 220, 80);
+  stroke(COLORS.border);
   noFill();
   rect(x, y, w, h, 8);
   noStroke();
 }
 
-function drawChoiceCard(x, y, w, h, option) {
-  drawPanel(x, y, w, h);
-  fill(option.color === "red" ? COLORS.red : option.color === "yellow" ? COLORS.yellow : COLORS.green);
-  ellipse(x + 38, y + 38, 34, 34);
-  fill(COLORS.paper);
-  textSize(23);
-  textStyle(BOLD);
-  text(option.label, x + 68, y + 32, w - 92);
-  textStyle(NORMAL);
-  textSize(17);
-  textLeading(23);
-  text(option.text, x + 26, y + 72, w - 52, 60);
-}
-
-function drawButtonGuide(x, y, color, label, action) {
-  fill(color);
-  stroke(0, 0, 0, 80);
-  ellipse(x, y, 38, 38);
-  noStroke();
-  fill(COLORS.paper);
-  textSize(15);
-  textStyle(BOLD);
-  textAlign(CENTER, TOP);
-  text(label, x - 55, y + 32, 110);
-  textStyle(NORMAL);
-  text(action, x - 55, y + 54, 110);
-  textAlign(LEFT, BASELINE);
-}
-
-function drawParty() {
-  const members = ["donkey"];
-  if (companions.dog) members.push("dog");
-  if (companions.cat && resultType !== "neutral") members.push("cat");
-  if (companions.rooster) members.push("rooster");
-
-  imageMode(CENTER);
-  members.forEach((member, index) => {
-    image(assets[`${member}_icon`], 952 + index * 90, 678, 104, 58);
-  });
-  imageMode(CORNER);
-}
-
-function handleWhiteButton() {
-  if (scene === "start") startStory();
-  else if (scene === "passive") advancePassive();
-  else if (scene === "transition" && resultType === "bad") startEndingSequence();
-  else if (scene === "ending") resetStory();
-}
-
-function handleChoice(choiceIndex) {
-  if (scene !== "choice") return;
-  const entry = currentChoices[0];
-  const option = entry.options[choiceIndex];
-  if (!option) return;
-  if (option.joins) companions[option.joins] = true;
-  choiceHistory.push({
-    scene: entry.title,
-    color: option.color,
-    effect: option.effect,
-    joins: option.joins || null,
-  });
-
-  if (entry === choiceScenes.dog) {
-    currentChoices = [choiceScenes.cat];
-  } else if (entry === choiceScenes.cat) {
-    currentChoices = [choiceScenes.rooster];
+function drawTextBoxUi(x, y, w, h) {
+  if (assets.textBox) {
+    push();
+    tint(255, 224);
+    image(assets.textBox, x, y, w, h);
+    noTint();
+    pop();
   } else {
-    decideEnding();
-    scene = "transition";
+    drawPanel(x, y, w, h, COLORS.panel);
   }
 }
 
-function advancePassive() {
-  if (sceneIndex < passiveScenes.length - 1) {
-    sceneIndex += 1;
-  } else {
-    scene = "choice";
-    currentChoices = [choiceScenes.dog];
-  }
+function drawChoiceCard(x, y, w, h, option, index) {
+  drawPanel(x, y, w, h, COLORS.panelStrong);
+  const uiKey = index === 0 ? "yellowChoice1" : index === 1 ? "greenChoice2" : "whiteChoice3";
+  drawUiImage(uiKey, x + 18, y + 18, 70, 70);
+  fill(COLORS.paper);
+  textStyle(BOLD);
+  textSize(20);
+  text(option.label, x + 104, y + 31, w - 126, 42);
+  textStyle(NORMAL);
+  textSize(16);
+  textLeading(22);
+  text(option.text, x + 24, y + 98, w - 48, 76);
+}
+
+function drawUiImage(key, x, y, w, h) {
+  image(assets[key], x, y, w, h);
+}
+
+function drawStackedDonkeyAndCompanions() {
+  const donkeyX = map(lastSliderValue, 0, 1023, 196, 1180);
+  const baseY = 640;
+  miniGame.donkeyX = donkeyX;
+  image(assets.donkeyBody, donkeyX, baseY, 300, 168);
+
+  miniGame.stack.forEach((kind, index) => {
+    const y = baseY - 110 - index * 82;
+    image(assets[`${kind}Body`], donkeyX, y, animalWidth(kind), animalHeight(kind));
+  });
+}
+
+function animalWidth(kind) {
+  if (kind === "dog") return 230;
+  if (kind === "cat") return 220;
+  return 210;
+}
+
+function animalHeight(kind) {
+  if (kind === "dog") return 128;
+  if (kind === "cat") return 122;
+  return 118;
 }
 
 function startStory() {
-  resetStory();
-  scene = "passive";
+  resetStoryState();
+  pages = introPages();
+  pageIndex = 0;
+  appState = "page";
 }
 
-function resetStory() {
-  scene = "start";
-  sceneIndex = 0;
-  currentChoices = [];
-  resultType = null;
-  endingAsset = null;
+function resetStoryState() {
+  appState = "start";
+  pages = [];
+  pageIndex = 0;
+  currentChoice = null;
   companions = { dog: false, cat: false, rooster: false };
-  choiceHistory = [];
+  resultType = null;
   miniGame = null;
+  fade = null;
+}
+
+function continueStory() {
+  if (appState === "start") return;
+  if (appState === "page") {
+    if (pageIndex < pages.length - 1) {
+      pageIndex += 1;
+    } else {
+      advanceAfterPages();
+    }
+  } else if (appState === "fade") {
+    return;
+  }
+}
+
+function advanceAfterPages() {
+  const last = pages[pages.length - 1];
+  if (!last || !last.next) {
+    resetStoryState();
+    return;
+  }
+  if (last.next === "dogChoice") showChoice(dogChoice());
+  else if (last.next === "catIntro") {
+    pages = catIntroPages();
+    pageIndex = 0;
+  } else if (last.next === "catChoice") showChoice(catChoice());
+  else if (last.next === "roosterIntro") {
+    pages = roosterIntroPages();
+    pageIndex = 0;
+  } else if (last.next === "roosterChoice") showChoice(roosterChoice());
+  else if (last.next === "forest") {
+    decideEnding();
+    pages = forestPages();
+    pageIndex = 0;
+  } else if (last.next === "badEnding") {
+    pages = badEndingPages();
+    pageIndex = 0;
+  } else if (last.next === "miniIntro") {
+    appState = "miniIntro";
+  } else if (last.next === "end") {
+    resetStoryState();
+  }
+}
+
+function showChoice(choice) {
+  currentChoice = choice;
+  appState = "choice";
+}
+
+function chooseOption(index) {
+  if (appState !== "choice") return;
+  const option = currentChoice.options[index];
+  if (!option) return;
+  if (option.joins) companions[option.joins] = true;
+  pages = option.pages;
+  pageIndex = 0;
+  currentChoice = null;
+  appState = "page";
 }
 
 function decideEnding() {
-  if (companions.dog && companions.cat && companions.rooster) {
-    resultType = "good";
-    endingAsset = "ending_good";
-    return;
-  }
-
-  const neutralCompanions = getNeutralCompanions();
-  if (neutralCompanions.length > 0) {
-    resultType = "neutral";
-    if (neutralCompanions.includes("dog") && neutralCompanions.includes("rooster")) {
-      endingAsset = "ending_mid_donkey_dog_rooster";
-    } else if (neutralCompanions.includes("dog")) {
-      endingAsset = "ending_mid_donkey_dog";
-    } else {
-      endingAsset = "ending_mid_donkey_rooster";
-    }
-    return;
-  }
-
-  resultType = "bad";
-  endingAsset = "ending_bad";
+  if (companions.dog && companions.cat && companions.rooster) resultType = "good";
+  else if (joinedCompanions().length > 0) resultType = "neutral";
+  else resultType = "bad";
 }
 
-function getNeutralCompanions() {
-  const list = [];
-  if (companions.dog) list.push("dog");
-  if (companions.rooster) list.push("rooster");
-  return list;
+function joinedCompanions() {
+  return ["dog", "cat", "rooster"].filter((animal) => companions[animal]);
 }
 
-function startEndingSequence() {
-  if (resultType === "bad") {
-    scene = "ending";
-    return;
-  }
-  miniGame = createMiniGame();
-  scene = "minigame";
+function introPages() {
+  return [
+    page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
+    page("intro", "Then his master thought that he would no longer feed him. The donkey noticed that the wind was blowing less and less and ran away, setting forth on the road to Bremen, where he thought he could become a town musician as he always had a good ear for sounds.", "left"),
+    page("road", "When he had gone a little way he found a hunting dog lying in the road, who was panting like one who had run himself tired.", "left"),
+    page("road", "\"Why are you panting so, hunting dog?\" asked the donkey. \"Oh,\" said the dog, \"because I am old and am getting weaker every day and can no longer go hunting, my master wanted to kill me, so I ran off; but now how should I earn my bread?\"", "left", "dogChoice"),
+  ];
 }
 
-function createMiniGame() {
-  const kinds = resultType === "good" ? ["dog", "cat", "rooster"] : getNeutralCompanions();
+function dogChoice() {
   return {
-    kinds,
-    fallers: [],
-    caught: 0,
-    missed: 0,
-    target: resultType === "good" ? 8 : 5,
-    nextSpawnAt: 0,
-    endsAt: millis() + 35000,
+    image: "dogGood",
+    question: "How should the donkey answer the dog?",
+    options: [
+      {
+        label: "Choice 1",
+        text: "\"Do you know what,\" said the donkey, \"I am going to Bremen and am going to become a town musician there. Come along and take up music too. I'll play the lute with my good ears, and you can beat the drums with your good instincts.\"",
+        joins: "dog",
+        pages: [
+          page("dogGood", "The dog was satisfied with that, and they went further.", "left"),
+          page("road", "They continued along the road toward Bremen.", "left", "catIntro"),
+        ],
+      },
+      {
+        label: "Choice 2",
+        text: "\"That is surely tiresome.\" Said the donkey. \"There is a town known for music, our old bones would surely fit in so join me!\"",
+        joins: "dog",
+        pages: [
+          page("dogGood", "The dog felt sceptic at the comment about his age. He was a proud hunting dog! \"Well, it seems enticing, well alright!\" The dog relented knowing he had no more hunting left in him.", "left"),
+          page("road", "They continued along the road toward Bremen.", "left", "catIntro"),
+        ],
+      },
+      {
+        label: "Choice 3",
+        text: "\"Well, I'll leave you be to rest. I am off to become a musician!\"",
+        pages: [
+          page("dogBad", "\"Well, I'll leave you be to rest. I am off to become a musician!\" Said the donkey and happily galloped away, leaving the dog behind.", "left"),
+          page("road", "The donkey continued alone along the road toward Bremen.", "left", "catIntro"),
+        ],
+      },
+    ],
+  };
+}
+
+function catIntroPages() {
+  const withDog = companions.dog;
+  const text = withDog
+    ? "It didn't take long, before the donkey and the former hunting dog came to a cat sitting by the side of the road and making a face like three days of rainy weather."
+    : "It didn't take long, before the donkey came to a cat sitting by the side of the road and making a face like three days of rainy weather.";
+  return [
+    page(withDog ? "catDog" : "catDonkey", `${text} \"What has crossed you, old Milk-Licker?\" said the donkey.`, "left"),
+    page(withDog ? "catDog" : "catDonkey", "\"Oh,\" answered the cat, \"who can be cheerful when his neck is at risk? I am getting on in years, and my teeth are getting dull, so I would rather sit behind the stove and purr than to chase around after mice. Therefore, my mistress wanted to drown me, but I took off. Now good advice is scarce. Where should I go?\"", "left", "catChoice"),
+  ];
+}
+
+function catChoice() {
+  return {
+    image: companions.dog ? "catDog" : "catDonkey",
+    question: "How should the donkey answer the cat?",
+    options: [
+      {
+        label: "Choice 1",
+        text: "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\"",
+        joins: "cat",
+        pages: [
+          page("catGood", "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey on his journey.", "left"),
+          page("road", "They continued along the road toward Bremen.", "left", "roosterIntro"),
+        ],
+      },
+      {
+        label: "Choice 2",
+        text: "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\"",
+        pages: [
+          page(companions.dog ? "catDog" : "catDonkey", "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\" The donkey spouted. The cat was baffled by the mean words, they were true but mean. With a big huff and puff the cat decided to turn around and sleep declining the offer.", "left"),
+          page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
+        ],
+      },
+      {
+        label: "Choice 3",
+        text: "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\"",
+        pages: [
+          page(companions.dog ? "catDog" : "catDonkey", "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\" The donkey said in a joking manner, trying to get laughs but instead was met with a hiss from the cat so shrill and lethal, it made the donkey flee and run along the path, far away from the cat.", "left"),
+          page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
+        ],
+      },
+    ],
+  };
+}
+
+function roosterIntroPages() {
+  const image = roosterImage();
+  return [
+    page(image, "After travelling further along the road, the donkey and their companion came to a farmyard. They were tired from the day's journey, but the donkey felt less alone with every new friend who had walked beside him.", "left"),
+    page(image, "There, the rooster of the house was sitting on the gate, crying with all his might. \"Your cries pierce one's marrow and bone,\" said the donkey. \"What are you up to?\"", "left"),
+    page(image, "\"I just prophesied good weather,\" said the rooster, \"because it is Our Dear Lady's Day, when she washes the Christ Child's shirts and wants to dry them; but because Sunday guests are coming tomorrow, the lady of the house has no mercy and told the cook that she wants to eat me tomorrow in the soup, so I am supposed to let them cut off my head this evening. Now I am going to cry at the top of my voice as long as I can.\"", "left", "roosterChoice"),
+  ];
+}
+
+function roosterChoice() {
+  return {
+    image: roosterImage(),
+    question: "How should the donkey answer the rooster?",
+    options: [
+      {
+        label: "Choice 1",
+        text: "\"Hey now my fellow friend! That sounds tragic! My party and me are headed of to the city to become musicians! Why not join us and amaze the crowds with your beautiful voice?\"",
+        joins: "rooster",
+        pages: [page(roosterImage(true), "\"Hey now my fellow friend! That sounds tragic! My party and me are headed of to the city to become musicians! Why not join us and amaze the crowds with your beautiful voice?\" Said the donkey excitedly. The rooster was happy with the proposal, and all four went off together.", "left", "forest")],
+      },
+      {
+        label: "Choice 2",
+        text: "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death.\"",
+        joins: "rooster",
+        pages: [page(roosterImage(true), "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" Mentioned the Donkey sheepishly. The rooster was taken aback by the straight forwardness but agreed nonetheless.", "left", "forest")],
+      },
+      {
+        label: "Choice 3",
+        text: "\"Well that does sound bad but with your shrill voice, do you believe you'll make a difference if you make noises all evening long?\"",
+        pages: [page(roosterImage(), "\"Well that does sound bad but with your shrill voice, do you believe you'll make a difference if you make noises all evening long? Better come with us, might as well put your voice to good use.\" The donkey snorted. The rooster was appalled and continued with the noise making, being louder than before. The donkey lowered their head in shame and walked on towards the city, regretting their choice of words.", "left", "forest")],
+      },
+    ],
+  };
+}
+
+function roosterImage(afterJoin = false) {
+  const dog = companions.dog;
+  const cat = companions.cat;
+  if (afterJoin && dog && cat) return "roosterAll";
+  if (dog && cat) return "roosterAll";
+  if (dog) return "roosterDog";
+  if (cat) return "roosterCat";
+  return "roosterDonkey";
+}
+
+function forestPages() {
+  if (resultType === "bad") {
+    return [
+      page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left", "badEnding"),
+    ];
+  }
+
+  if (resultType === "good") {
+    return [
+      page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left"),
+      page("house", "The donkey and the dog lay down under a big tree, but the cat and the rooster took to the branches. The rooster flew right to the top, where it was safest for him.", "left"),
+      page("house", "Before falling asleep he looked around once again in all four directions, and he thought that he saw a little spark burning in the distance. He hollered to his companions, that there must be a house not too far away, for a light was shining.", "left"),
+      page("lookingInside", "The donkey said, \"Then we must get up and go there, because the lodging here is poor.\" The dog said that he could do well with a few bones with a little meat on them.", "left"),
+      page("lookingInside", "Thus they set forth toward the place where the light was, and they soon saw it glistening more brightly, and it became larger and larger, until they came to the front of a brightly lit robbers' house.", "left"),
+      page("lookingInside", "The donkey, the largest of them, approached the window and looked in. \"What do you see, Gray-Horse?\" asked the rooster. \"What do I see?\" answered the donkey. \"A table set with good things to eat and drink, and robbers sitting there enjoying themselves.\"", "left"),
+      page("lookingInside", "\"That would be something for us,\" said the rooster. \"Ee-ah, ee-ah, oh, if we were there!\" said the donkey.", "left"),
+      page("lookingInside", "Then the animals discussed how they might drive the robbers away, and at last they came upon a plan. The donkey was to stand with his front feet on the window, the dog to jump on the donkey's back, the cat to climb onto the dog, and finally the rooster would fly up and sit on the cat's head.", "left", "miniIntro"),
+    ];
+  }
+
+  return [
+    page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left"),
+    page("house", "The donkey and his companion or companions settled down beneath a large tree in the forest. They had not gathered a complete band, but the donkey was no longer making the journey alone.", "left"),
+    page("house", "Before they could fall asleep, one of the animals noticed a little spark burning in the distance. It seemed that there must be a house nearby, for a light was shining through the darkness.", "left"),
+    page("lookingInside", "\"Then we should go there,\" said the donkey. \"The lodging here is poor, and perhaps we may find something to eat.\" Tired and hungry, the small group set forth toward the light.", "left"),
+    page("lookingInside", "It grew brighter and larger until they came to the front of a brightly lit robbers' house. The donkey, being the largest of them, approached the window and looked in.", "left"),
+    page("lookingInside", "\"What do you see?\" asked one of his companions. \"What do I see?\" answered the donkey. \"A table set with good things to eat and drink, and robbers sitting there enjoying themselves.\"", "left"),
+    page("lookingInside", "\"That would be something for us,\" said his companion. \"Ee-ah, ee-ah, oh, if we were there!\" said the donkey.", "left"),
+    page("lookingInside", "Although there were fewer of them than there might have been, the animals discussed how they could drive the robbers away. At last, they came upon a desperate plan: they would climb onto one another as well as they could, crash against the window, and make the most terrible music the robbers had ever heard.", "left"),
+    page("lookingInside", "The donkey stood at the bottom of their small tower. Any companions who had joined him climbed above him, each trying to appear louder and more frightening than they truly felt.", "left", "miniIntro"),
+  ];
+}
+
+function badEndingPages() {
+  return [
+    page("lookingInside", "Before falling asleep he looked around once again in all four directions, and he thought that he saw a little spark burning in the distance.", "left"),
+    page("lookingInside", "The donkey went and had a look inside the house, seeing robbers the donkey did not dare fight them alone. Carrying on throughout the woods. Tired, the donkey went to sleep.", "left"),
+    page("bad", "Waking up in the forest with no food and feeling lonely, the donkey made their way back to the mill it came from. Treading the day the farmer would not be able to feed them anymore.", "left"),
+    page("bad", "The donkey dream of being a musician slowly fades away like a distant memory.", "left", "end"),
+  ];
+}
+
+function buildPostMiniPages() {
+  if (resultType === "good") {
+    return [
+      page("crash", "When they had done that, at a signal they began to make their music all together. The donkey brayed, the dog barked, the cat meowed and the rooster crowed. Then they crashed through the window into the room, shattering the panes.", "left"),
+      page("feast", "The robbers jumped up at the terrible bellowing, thinking that a ghost was coming in, and fled in great fear out into the woods.", "left"),
+      page("feast", "Then the four companions seated themselves at the table and freely partook of the leftovers, eating as if they would get nothing more for four weeks.", "left"),
+      page("darkHouse", "When the four minstrels were finished, they put out the light and looked for a place to sleep, each according to their nature and their desire.", "left"),
+      page("darkHouse", "The donkey lay down on the hay pile, the dog behind the door, the cat on the hearth next to the warm ashes, and the rooster sat on the beam of the roof. Because they were tired from their long journey, they soon fell asleep.", "left"),
+      page("robberInside", "When midnight had passed and the robbers saw from the distance that the light was no longer burning in the house, and everything appeared to be quiet, the captain said, \"We shouldn't have let ourselves be chased off,\" and he told one of them to go back and investigate the house.", "left"),
+      page("robberInside", "The one they sent found everything still and went into the kitchen to strike a light. He mistook the cat's glowing, fiery eyes for live coals, and held a sulfur match next to them, so that it would catch fire.", "left"),
+      page("robberFleeing", "But the cat didn't think this was funny and jumped into his face, spitting, and scratching. He was terribly frightened and ran toward the back door, but the dog, who was lying there, jumped up and bit him in the leg.", "left"),
+      page("robberFleeing", "When he ran across the yard past the hay pile, the donkey gave him a healthy blow with his hind foot, and the rooster, who had been awakened from his sleep by the noise and was now alert, cried down from the beam, \"Cock-a-doodle-doo!\"", "left"),
+      page("goodAnimals", "Then the robber ran as fast as he could back to his captain and said, \"Oh, there is a horrible witch sitting in the house, she blew at me and scratched my face with her long nails. And there is a man with a knife standing in front of the door, and he stabbed me in the leg.\"", "left"),
+      page("goodAnimals", "\"And a black monster is lying in the yard, and it struck at me with a wooden club. And the judge is sitting up there on the roof, and he was calling out, 'Bring the rascal here.' Then I did what I could to get away.\"", "left"),
+      page("goodFinal", "From that time forth, the robbers did not dare go back into the house. However, the four Bremen Musicians liked it so well there, that they made that house their home, journeying on towards the city from time to time to play their music.", "left", "end"),
+    ];
+  }
+
+  const pagesOut = [
+    page("crash", "At the donkey's signal, they began their music together. The donkey brayed at the top of his lungs, while his companion or companions added their own cries to the dreadful concert. Then they crashed through the window into the room, shattering the panes.", "left"),
+    page("feast", "The robbers jumped up at the terrible noise. In the confusion and darkness, they believed that some horrible creature had broken into their house, and they fled in great fear into the woods.", "left"),
+    page("darkHouse", "When the minstrels were finished, they put out the light and looked for places to sleep, each according to their nature and desire. The donkey lay down on the hay pile.", "left"),
+  ];
+
+  if (companions.dog) pagesOut.push(page("darkHouse", "The dog curled up behind the door, ready to wake at the slightest sound.", "left"));
+  if (companions.cat) pagesOut.push(page("darkHouse", "The cat settled on the hearth beside the warm ashes, finally finding a place where no one would chase her away.", "left"));
+  if (companions.rooster) pagesOut.push(page("darkHouse", "The rooster flew up onto a beam of the roof, where he could watch safely from above.", "left"));
+
+  pagesOut.push(page("darkHouse", "Because they were tired from their long journey and the excitement of the night, they soon fell asleep.", "left"));
+  pagesOut.push(page("robberInside", "When midnight had passed, the robbers saw from a distance that the light was no longer burning in the house and that everything appeared quiet. Their captain said, \"We should not have let ourselves be chased away,\" and he sent one of them back to investigate the house.", "left"));
+  pagesOut.push(page("robberInside", "The robber carefully entered the dark house, believing that the frightening creatures from earlier had disappeared.", "left"));
+
+  if (companions.cat) pagesOut.push(page("robberInside", "In the kitchen, the robber mistook the cat's glowing eyes for live coals and stepped closer to light his match. The cat sprang at his face, hissing and scratching until he stumbled backward in terror.", "left"));
+  if (companions.dog) pagesOut.push(page("robberFleeing", "As the robber turned toward the door, the dog jumped up from the shadows and bit him sharply in the leg.", "left"));
+  if (companions.rooster) pagesOut.push(page("robberFleeing", "Awakened by the noise below, the rooster cried down from the beam with a shriek so sudden and loud that the robber believed he was being judged by a monster above him.", "left"));
+
+  pagesOut.push(page("robberFleeing", "When the robber ran across the yard past the hay pile, the donkey gave him a powerful blow with his hind foot. Terrified and bruised, the robber fled as fast as he could back to his captain.", "left"));
+  pagesOut.push(page(neutralAnimalImage(), "When the robber returned to his captain, he could barely speak from fear. \"There is a black monster lying in the yard,\" he cried, \"and it struck me with a wooden club! There are other terrible creatures hiding inside as well. We must stay far away from that house!\"", "left"));
+  pagesOut.push(page("neutralFinal", "From that time forth, the robbers did not dare go back into the house. The animals decided to make this their home and keep living there.", "left"));
+  pagesOut.push(page("neutralFinal", "The donkey and his band were relieved to have found safety and shelter. As the donkey looked at their small group, he could not help but think of the voices that were missing from their music. They had succeeded, but they were not yet the grand band he had dreamed of becoming.", "left", "end"));
+  return pagesOut;
+}
+
+function neutralAnimalImage() {
+  const dog = companions.dog;
+  const cat = companions.cat;
+  const rooster = companions.rooster;
+  if (dog && cat && !rooster) return "neutralDogCat";
+  if (dog && rooster && !cat) return "neutralDogRooster";
+  if (cat && rooster && !dog) return "neutralCatRooster";
+  if (dog) return "neutralDog";
+  if (cat) return "neutralCat";
+  return "neutralRooster";
+}
+
+function page(image, text, position = "left", next = null) {
+  return { image, text, position, next };
+}
+
+function startMiniGame() {
+  const animals = joinedCompanions();
+  miniGame = {
+    animals,
+    stack: [],
+    currentIndex: 0,
+    faller: null,
+    donkeyX: 688,
+    startedAt: millis(),
+  };
+  spawnNextFaller();
+  appState = "miniGame";
+}
+
+function spawnNextFaller() {
+  const kind = miniGame.animals[miniGame.currentIndex];
+  miniGame.faller = {
+    kind,
+    x: random(240, 1136),
+    y: -80,
+    baseX: random(240, 1136),
+    phase: random(TWO_PI),
+    speed: 2.5,
   };
 }
 
 function updateMiniGame() {
-  if (millis() >= miniGame.nextSpawnAt) {
-    const kind = random(miniGame.kinds);
-    miniGame.fallers.push({
-      kind,
-      x: random(160, 1216),
-      y: -40,
-      speed: random(3.2, 5.8),
-    });
-    miniGame.nextSpawnAt = millis() + random(560, 920);
-  }
+  if (!miniGame.faller) return;
+  const faller = miniGame.faller;
+  faller.y += faller.speed;
+  faller.x = faller.baseX + sin(frameCount * 0.055 + faller.phase) * 95;
 
-  const donkeyX = map(lastSliderValue, 0, 1023, 132, 1244);
-  for (let i = miniGame.fallers.length - 1; i >= 0; i -= 1) {
-    const faller = miniGame.fallers[i];
-    faller.y += faller.speed;
-    if (faller.y > 560 && abs(faller.x - donkeyX) < 138) {
-      miniGame.caught += 1;
-      miniGame.fallers.splice(i, 1);
-    } else if (faller.y > 800) {
-      miniGame.missed += 1;
-      miniGame.fallers.splice(i, 1);
+  if (faller.y > 535 && abs(faller.x - miniGame.donkeyX) < 150) {
+    miniGame.stack.push(faller.kind);
+    miniGame.currentIndex += 1;
+    if (miniGame.currentIndex >= miniGame.animals.length) {
+      fade = { startedAt: millis(), image: "crash" };
+      appState = "fade";
+    } else {
+      spawnNextFaller();
     }
-  }
-
-  if (miniGame.caught >= miniGame.target || millis() >= miniGame.endsAt) {
-    scene = "ending";
+  } else if (faller.y > 820) {
+    spawnNextFaller();
   }
 }
 
-function getEndingCopy() {
-  if (resultType === "good") {
-    return {
-      title: "Good Ending",
-      text:
-        "All four musicians stand together. Their terrible music scares the robbers away, and the house becomes their safe new home.",
-    };
-  }
+function handleContinueButton() {
+  if (appState === "page") continueStory();
+}
 
-  if (resultType === "neutral") {
-    const names = getNeutralCompanions().join(" and ");
-    return {
-      title: "Neutral Ending",
-      text:
-        `The donkey reaches the robber's house with ${names}. The plan works, but the group is incomplete. The cat is not part of this ending path.`,
-    };
-  }
-
-  return {
-    title: "Bad Ending",
-    text:
-      "The donkey reaches the forest alone. Without companions, he cannot face the robbers and turns back toward the uncertain life he tried to escape.",
-  };
+function handleLightValue(value) {
+  lastLightValue = constrain(value, 0, 1023);
+  if (appState === "start" && lastLightValue >= LIGHT_START_THRESHOLD) startStory();
+  if (appState === "miniIntro" && lastLightValue >= MINI_GAME_LIGHT_THRESHOLD) startMiniGame();
 }
 
 async function connectSerial() {
@@ -605,30 +755,26 @@ function parseSerialLine(line) {
     return;
   }
 
-  if (normalized === "B1" || normalized === "WHITE") handleWhiteButton();
-  else if (normalized === "B2" || normalized === "RED") handleChoice(0);
-  else if (normalized === "B3" || normalized === "YELLOW") handleChoice(1);
-  else if (normalized === "B4" || normalized === "GREEN") handleChoice(2);
+  if (normalized === "B1" || normalized === "RED") handleContinueButton();
+  else if (normalized === "B4" || normalized === "YELLOW") chooseOption(0);
+  else if (normalized === "B3" || normalized === "GREEN") chooseOption(1);
+  else if (normalized === "B2" || normalized === "WHITE") chooseOption(2);
   else if (normalized.startsWith("S:") || normalized.startsWith("SLIDER:")) {
     const value = Number(normalized.split(":")[1]);
     if (Number.isFinite(value)) lastSliderValue = constrain(value, 0, 1023);
   } else if (normalized.startsWith("L:") || normalized.startsWith("LIGHT:")) {
     const value = Number(normalized.split(":")[1]);
-    if (Number.isFinite(value)) {
-      lastLightValue = constrain(value, 0, 1023);
-      if (scene === "start" && lastLightValue >= LIGHT_START_THRESHOLD) startStory();
-      if (scene === "transition" && resultType !== "bad" && lastLightValue >= MINI_GAME_LIGHT_THRESHOLD) startEndingSequence();
-    }
+    if (Number.isFinite(value)) handleLightValue(value);
   }
 
   updateHud();
 }
 
 function keyPressed() {
-  if (keyCode === ENTER || key === " ") handleWhiteButton();
-  else if (key === "1") handleChoice(0);
-  else if (key === "2") handleChoice(1);
-  else if (key === "3") handleChoice(2);
+  if (keyCode === ENTER || key === " ") handleContinueButton();
+  else if (key === "1") chooseOption(0);
+  else if (key === "2") chooseOption(1);
+  else if (key === "3") chooseOption(2);
   else if (keyCode === LEFT_ARROW || key.toLowerCase() === "a") {
     lastSliderValue = max(0, lastSliderValue - 55);
     updateHud();
@@ -636,8 +782,8 @@ function keyPressed() {
     lastSliderValue = min(1023, lastSliderValue + 55);
     updateHud();
   } else if (key.toLowerCase() === "l") {
-    lastLightValue = LIGHT_START_THRESHOLD;
-    parseSerialLine(`L:${LIGHT_START_THRESHOLD}`);
+    handleLightValue(MINI_GAME_LIGHT_THRESHOLD);
+    updateHud();
   }
 }
 

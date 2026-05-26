@@ -1,6 +1,6 @@
 # Bremen Town Musicians - Project Source of Truth
 
-Last updated: 2026-05-21
+Last updated: 2026-05-26
 
 ## Project Goal
 
@@ -8,52 +8,50 @@ Create an interactive retelling of *The Bremen Town Musicians* for the IxD inter
 
 The project uses:
 
-- **p5.js** for the visual story, branching interaction, and mini-game.
+- **p5.js** for visuals, branching story interaction, and the tower stacking mini-game.
 - **Arduino IDE** for the Arduino Micro controller.
 - **Arduino Micro hardware** connected to the laptop over USB serial.
 
-The intended experience is a physical story controller: the audience uses buttons, a slider, and a light sensor to control a browser-based story.
+No generated replacement images are currently used.
 
 ## Application Entry Point
 
-The p5.js application is launched from:
+The browser application is launched from:
 
 - `index.html`
 - `style.css`
 - `sketch.js`
 
-The browser app uses the existing image files in:
+The app uses existing assets from:
 
 - `Bremen Image Material/`
 
-No generated replacement images are currently used.
-
-## Required Browser
+## Browser Requirement
 
 Use Chrome or Edge for the Arduino connection because the app uses the Web Serial API.
 
-The story can also be tested without Arduino using keyboard fallback:
+Keyboard fallback for testing:
 
-- `Space` or `Enter`: white button / continue
-- `1`: red button / choice 1
-- `2`: yellow button / choice 2
-- `3`: green button / choice 3
+- `Space` or `Enter`: red button / continue
+- `1`: yellow button / choice 1
+- `2`: green button / choice 2
+- `3`: white button / choice 3
 - `Left` / `A`: move slider left
 - `Right` / `D`: move slider right
-- `L`: simulate light sensor reaching the start threshold
+- `L`: simulate covered light sensor threshold
 
 ## Arduino Hardware Inputs
 
-The implemented repo sketch expects:
+The repo sketch expects this mapping:
 
 | Control | Purpose | Pin | Serial output |
 | --- | --- | --- | --- |
-| White button | Continue / advance story | D2 | `B1` |
-| Red button | Choice 1 | D3 | `B2` |
-| Yellow button | Choice 2 | D4 | `B3` |
-| Green button | Choice 3 | D5 | `B4` |
+| Red button | Continue / advance story | D2 | `B1` |
+| White button | Choice 3 | D3 | `B2` |
+| Green button | Choice 2 | D4 | `B3` |
+| Yellow button | Choice 1 | D5 | `B4` |
 | Slider / potentiometer | Mini-game horizontal control | A0 | `S:<0-1023>` |
-| Light sensor | Starts story and starts mini-game | A1 | `L:<0-1023>` |
+| Light sensor | Starts story and mini-game when covered | A1 | `L:<0-1023>` |
 
 Buttons use `INPUT_PULLUP`, so they are active LOW:
 
@@ -77,180 +75,202 @@ B2
 B3
 B4
 S:512
-L:700
+L:300
 ```
 
-The app also accepts these readable labels for testing/flexibility:
+The app also accepts readable labels:
 
 ```text
-WHITE
 RED
 YELLOW
 GREEN
+WHITE
 SLIDER:512
-LIGHT:700
+LIGHT:300
 ```
 
-## Light Sensor Start Rules
+## Light Sensor Rules
 
-The story stays on the start page until the light sensor reaches the configured threshold.
+The light sensor uses the original high-value trigger. The app starts when the sensor value becomes high enough.
 
-Current story threshold in `sketch.js`:
+Current thresholds in `sketch.js`:
 
 ```js
 const LIGHT_START_THRESHOLD = 650;
-```
-
-When the app receives `L:<value>` and `value >= 650`, the story starts from the first scene.
-
-The mini-game also waits for the light sensor. At the house-in-the-forest scene, if the ending is not bad, the white button does not start the mini-game. The mini-game starts when the app receives a light value at or above:
-
-```js
 const MINI_GAME_LIGHT_THRESHOLD = 650;
 ```
 
-These values may need calibration after testing with the real sensor, room lighting, and physical enclosure.
+Story start:
+
+- if app is on the start page
+- and receives `L:<value>`
+- and `value >= 650`
+- then the story begins
+
+Mini-game start:
+
+- if app is on the mini-game explanation page
+- and receives `L:<value>`
+- and `value >= 650`
+- then the tower stacking game begins
+
+The threshold should be calibrated after testing the actual sensor values for uncovered and covered states.
+
+## Button Mapping In App
+
+| Serial | Color | Function |
+| --- | --- | --- |
+| `B1` | Red | Continue |
+| `B2` | White | Choice 3 |
+| `B3` | Green | Choice 2 |
+| `B4` | Yellow | Choice 1 |
 
 ## Story Structure
 
-The story begins with the donkey leaving the mill.
+The story uses the updated Word document as the narrative source.
 
-The player then makes choices for:
+Implementation rules:
 
-1. Dog
-2. Cat
-3. Rooster
+- `VC` labels are ignored for now.
+- Voice lines are future work.
+- Heading/marker text is used only to understand structure.
+- Narrative text is split into readable chunks.
+- The same scene image can remain while red/continue advances through multiple text chunks.
+- Text may be lightly cleaned for grammar/structure, but not rewritten or shortened.
 
-Each choice can produce one of three effects:
+Major story sections:
 
-- Good: kind/helpful answer
-- Neutral: useful but tactless answer
-- Bad: rude or dismissive answer
+1. Donkey leaves the mill.
+2. Dog choice.
+3. Cat choice.
+4. Rooster choice.
+5. Forest/house approach.
+6. Tower stacking game if at least one companion joined.
+7. Good, neutral, or bad ending.
 
-Animal joining rules:
+## Companion Rules
 
 | Animal | Can join through |
 | --- | --- |
-| Dog | Dog good or dog neutral choice |
-| Cat | Cat good choice only |
-| Rooster | Rooster good or rooster neutral choice |
+| Dog | Dog choice 1 or choice 2 |
+| Cat | Cat choice 1 |
+| Rooster | Rooster choice 1 or choice 2 |
 
 ## Ending Rules
 
-### Good Ending
+Good ending:
 
-Condition:
+- dog joined
+- cat joined
+- rooster joined
 
-- Dog joined
-- Cat joined
-- Rooster joined
+Neutral ending:
 
-Visual:
+- at least one companion joined
+- includes cat-only, dog-only, rooster-only, and mixed companion variants
+
+Bad ending:
+
+- donkey has no companions
+
+## Visual Rules
+
+- Scene images are used as full visual scenes, not as generic layered backgrounds.
+- Scene images may be reused where the narrative still fits.
+- Road transition images may be inserted between encounters so a previous animal scene does not remain visible during the next encounter.
+- Transparent animal images are used only for the tower stacking mini-game.
+- Text boxes are semi-transparent when they overlap full scene images.
+- The old bottom party indicator has been removed.
+- Scene images are drawn with full-image containment to avoid cropping/over-zooming.
+
+## Scene Image Map
+
+Intro and road:
+
+- `starting page.png`
+- `the old mill donkey intro.png`
+- `bg_road for walking.png`
+
+Dog:
+
+- `meeting the dog  happy and neutral choices .png`
+- `meeting the dog bad choice.png`
+
+Cat:
+
+- `meeting cat only donkey bad and neutral choice.png`
+- `meeting the cat with donkey and dog.png`
+- `Donkey meeting cat good choice.png`
+
+Rooster:
+
+- `meeting the rooster with only donkey.png`
+- `meeting the rooster with donkey and dog.png`
+- `meeting rooster with donkey and cat.png`
+- `meeting the rooster with donkey cat and dog.png`
+
+House and robber sequence:
+
+- `bg_house for first view of the house and for the sleeping scene.png`
+- `looking inside the hut seeing robbers.png`
+- `Broken glass ambush of towereed animals neutral and good choices .png`
+- `Feast scene good and neutral choices.png`
+- `scene house with no lights before robbers go inside and after.png`
+- `robber inside the house.png`
+- `robber fleeing the house.png`
+
+Ending animal images:
 
 - `ending_good.png`
-
-Meaning:
-
-- All four animals work together and scare the robbers away.
-
-### Neutral Ending
-
-Condition:
-
-- At least one non-cat companion joined:
-  - dog
-  - rooster
-  - dog and rooster
-
-Cat rule:
-
-- The cat is never used in the neutral ending.
-- Neutral ending images containing the cat are intentionally excluded.
-
-Allowed neutral visuals:
-
-- `ending_mid_donkey_dog.png`
-- `ending_mid_donkey_rooster.png`
-- `ending_mid_donkey_dog_rooster.png`
-
-Excluded neutral visuals:
-
-- `ending_mid_donkey_cat.png`
-- `ending_mid_donkey_cat_rooster.png`
-- `ending_mid_donkey_dog_cat.png`
-
-### Bad Ending
-
-Condition:
-
-- No non-cat companion remains available for the ending.
-
-Visual:
-
+- `ending_neutral_donkey_dog.png`
+- `ending_neutral_donkey_cat.png`
+- `ending_neutral_donkey_rooster.png`
+- `ending_neutral_donkey_dog_cat.png`
+- `ending_neutral_donkey_dog_rooster.png`
+- `ending neutral_donkey_cat_rooster.png`
 - `ending_bad.png`
 
-Meaning:
+Final ending images:
 
-- The donkey reaches the forest alone and cannot face the robbers.
+- `good ending after animals are shown last image.png`
+- `neutral ending background after animal ending is shown last image.png`
 
-## Cat Edge Case
+UI:
 
-The project requirement says:
-
-- the cat can join in the good ending
-- the cat can never join in the neutral ending
-
-Therefore, if the cat joins earlier but the full good-ending group is not completed, the neutral ending ignores the cat and uses only dog/rooster companionship.
-
-If the cat is the only animal that joined, the app resolves to the bad ending because a neutral ending requires at least one non-cat companion.
+- `text box ui.png`
+- `UI Buttons red button choice continue.png`
+- `UI Buttons yellow button choice 1.png`
+- `UI Buttons green button choice 2.png`
+- `UI Buttons white button choice 3.png`
+- `Slider UI.png`
+- `Light sensor UI.png`
 
 ## Mini-Game
 
-The mini-game starts after the house-in-the-forest scene if the result is not bad and the light sensor reaches the mini-game threshold.
+The mini-game starts after a short explanation page.
 
-Purpose:
+Flow:
 
-- Use the slider to move the donkey horizontally.
-- Catch falling companion icons.
-- The game supports the story moment where the animals form a tower at the robbers' house.
+1. Narrative introduces the tower plan.
+2. Explanation page tells the user to cover the light sensor.
+3. User covers light sensor to start.
+4. Slider moves the donkey horizontally.
+5. One joined companion falls at a time in a zigzag motion.
+6. If caught, the companion stacks on the donkey and remains visible.
+7. The next joined companion falls.
+8. When all joined companions are stacked, a short fade transition plays.
+9. The story continues to the robber/ending sequence.
 
-Current behavior:
+Mini-game assets:
 
-- Good ending mini-game uses dog, cat, and rooster icons.
-- Neutral ending mini-game uses only dog and/or rooster.
-- Bad ending skips the mini-game.
-- The current timer is 35 seconds.
-
-The mini-game currently does not change the final ending. It is an interaction step before showing the ending.
-
-## Visual Assets
-
-Backgrounds:
-
-- `bg_farm.png`
-- `bg_road.png`
-- `bg_forest.png`
-- `bg_house.png`
-- `bg_inside.png`
-
-Characters:
-
-- `donkey_icon.png`
-- `dog_icon.png`
-- `cat_icon.png`
-- `rooster_icon.png`
-
-Endings currently used:
-
-- `ending_good.png`
-- `ending_bad.png`
-- `ending_mid_donkey_dog.png`
-- `ending_mid_donkey_rooster.png`
-- `ending_mid_donkey_dog_rooster.png`
+- `full body transparent background.png` for donkey
+- `dog sitting full body transparent background.png`
+- `cat full body transparent background.png`
+- `rooster full body transparent background.png`
 
 ## Board Layout Mockup
 
-`Board Layout example for each function.png` is a hand-in mockup for the professor.
+`Board Layout example for each function.png` is a professor hand-in mockup.
 
 It is not treated as the authoritative hardware source.
 
@@ -270,10 +290,12 @@ The authoritative implementation is:
 | `sketch.js` | Story logic, serial parsing, rendering, mini-game |
 | `bremen_musicians/bremen_musicians.ino` | Arduino Micro firmware |
 | `PROJECT_SOURCE_OF_TRUTH.md` | Living documentation |
+| `STORY_BRANCH_IMAGE_ORDER.md` | Current image order by branch |
 
 ## Known Technical Notes
 
 - The app references p5.js through CDN in `index.html`.
-- The Arduino connection requires a user click on `Connect Arduino`; browsers do not allow automatic serial connection.
-- The light threshold should be tested on the real physical setup and adjusted if needed.
-- The Arduino sketch in the repo is now intended to match the described four-button, slider, and light-sensor controller.
+- Browsers require a user click on `Connect Arduino`; serial connection cannot start automatically.
+- Light thresholds must be calibrated with the actual sensor and physical setup.
+- Voice lines are intentionally not implemented yet.
+- Background music and three ending sounds are planned, but no audio files are currently present in the repo.
