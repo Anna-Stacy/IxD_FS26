@@ -5,7 +5,7 @@ This file documents the current image order in `sketch.js`.
 ## Shared Start
 
 1. `the old mill donkey intro.png`
-2. `bg_road for walking.png`
+2. `meeting the dog  happy and neutral choices .png`
 3. Dog choice screen: `meeting the dog  happy and neutral choices .png`
 
 ## Dog Choice Branches
@@ -32,7 +32,7 @@ Choice 3, white, dog does not join:
 
 If dog joined:
 
-1. `meeting the cat with donkey and dog.png`
+1. `meeting the sad cat with donkey and dog.png`
 
 If dog did not join:
 
@@ -42,20 +42,21 @@ If dog did not join:
 
 Choice 1, yellow, cat joins:
 
-1. `Donkey meeting cat good choice.png`
-2. `bg_road for walking.png`
-3. Rooster intro
+1. If dog joined: `donkey and dog happy cat joining them good choice .png`
+2. If dog did not join: `Donkey alone meeting cat good choice cat joining.png`
+3. `bg_road for walking.png`
+4. Rooster intro
 
 Choice 2, green, cat does not join:
 
-1. If dog joined: `meeting the cat with donkey and dog.png`
+1. If dog joined: `meeting the sad cat with donkey and dog.png`
 2. If dog did not join: `meeting cat only donkey bad and neutral choice.png`
 3. `bg_road for walking.png`
 4. Rooster intro
 
 Choice 3, white, cat does not join:
 
-1. If dog joined: `meeting the cat with donkey and dog.png`
+1. If dog joined: `meeting the sad cat with donkey and dog.png`
 2. If dog did not join: `meeting cat only donkey bad and neutral choice.png`
 3. `bg_road for walking.png`
 4. Rooster intro
@@ -136,4 +137,3 @@ Neutral route:
    - dog + rooster: `ending_neutral_donkey_dog_rooster.png`
    - cat + rooster: `ending neutral_donkey_cat_rooster.png`
 11. `neutral ending background after animal ending is shown last image.png`
-

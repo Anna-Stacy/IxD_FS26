@@ -1,6 +1,6 @@
 # Bremen Town Musicians - Project Source of Truth
 
-Last updated: 2026-05-26
+Last updated: 2026-05-27
 
 ## Project Goal
 
@@ -180,6 +180,8 @@ Bad ending:
 - Road transition images may be inserted between encounters so a previous animal scene does not remain visible during the next encounter.
 - Transparent animal images are used only for the tower stacking mini-game.
 - Text boxes are semi-transparent when they overlap full scene images.
+- Narrative text boxes resize to the current text instead of using one fixed box size for every page.
+- Choice screens use one separate text-box UI image for each choice option.
 - The old bottom party indicator has been removed.
 - Scene images are drawn with full-image containment to avoid cropping/over-zooming.
 
@@ -196,11 +198,22 @@ Dog:
 - `meeting the dog  happy and neutral choices .png`
 - `meeting the dog bad choice.png`
 
+The good/neutral dog image is also used for the dog introduction and dog choice screen. It remains through the dog scene unless the bad dog choice is selected.
+
 Cat:
 
 - `meeting cat only donkey bad and neutral choice.png`
-- `meeting the cat with donkey and dog.png`
-- `Donkey meeting cat good choice.png`
+- `meeting the sad cat with donkey and dog.png`
+- `Donkey alone meeting cat good choice cat joining.png`
+- `donkey and dog happy cat joining them good choice .png`
+
+Cat image rules:
+
+- If the dog did not join, the cat introduction and non-joining cat choices use `meeting cat only donkey bad and neutral choice.png`.
+- If the dog joined, the cat introduction and non-joining cat choices use `meeting the sad cat with donkey and dog.png`.
+- The cat image changes to a happy joining image only after cat choice 1 is selected.
+- If cat choice 1 is selected without the dog, use `Donkey alone meeting cat good choice cat joining.png`.
+- If cat choice 1 is selected with the dog, use `donkey and dog happy cat joining them good choice .png`.
 
 Rooster:
 

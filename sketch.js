@@ -22,8 +22,9 @@ const FILES = {
   dogGood: "meeting the dog  happy and neutral choices .png",
   dogBad: "meeting the dog bad choice.png",
   catDonkey: "meeting cat only donkey bad and neutral choice.png",
-  catDog: "meeting the cat with donkey and dog.png",
-  catGood: "Donkey meeting cat good choice.png",
+  catDogSad: "meeting the sad cat with donkey and dog.png",
+  catGoodDonkey: "Donkey alone meeting cat good choice cat joining.png",
+  catGoodDog: "donkey and dog happy cat joining them good choice .png",
   roosterDonkey: "meeting the rooster with only donkey.png",
   roosterDog: "meeting the rooster with donkey and dog.png",
   roosterCat: "meeting rooster with donkey and cat.png",
@@ -185,7 +186,7 @@ function drawChoicePage() {
   drawSceneImage(currentChoice.image, currentChoice.overlay ?? 42);
   drawTextBox(currentChoice.question, "Choose with yellow, green, or white.", "top");
   currentChoice.options.forEach((option, index) => {
-    drawChoiceCard(82 + index * 430, 504, 386, 190, option, index);
+    drawChoiceCard(54 + index * 436, 452, 398, 258, option, index);
   });
 }
 
@@ -237,28 +238,94 @@ function drawFade() {
 }
 
 function drawTextBox(body, footer, position) {
-  const box = getTextBox(position);
+  const box = layoutTextBox(body, footer, position);
   drawTextBoxUi(box.x, box.y, box.w, box.h);
   fill(COLORS.ink || "#2b1b10");
   textStyle(NORMAL);
   textSize(box.fontSize);
   textLeading(box.leading);
-  text(body, box.x + 34, box.y + 34, box.w - 68, box.h - 92);
+  textAlign(LEFT, TOP);
+  text(body, box.x + box.padX, box.bodyY, box.w - box.padX * 2, box.bodyH);
   fill("#5a3518");
   textSize(18);
+  textLeading(23);
   if (footer.toLowerCase().includes("red")) {
-    drawUiImage("redContinue", box.x + 30, box.y + box.h - 58, 42, 42);
-    text(footer, box.x + 84, box.y + box.h - 32, box.w - 118);
+    drawUiImage("redContinue", box.x + box.padX, box.footerY - 9, 42, 42);
+    text(footer, box.x + box.padX + 54, box.footerY, box.w - box.padX * 2 - 54, 34);
   } else {
-    text(footer, box.x + 34, box.y + box.h - 36, box.w - 68);
+    text(footer, box.x + box.padX, box.footerY, box.w - box.padX * 2, 34);
   }
+  textAlign(LEFT, BASELINE);
 }
 
 function getTextBox(position) {
-  if (position === "top") return { x: 74, y: 48, w: 1228, h: 178, fontSize: 23, leading: 31 };
-  if (position === "right") return { x: 716, y: 82, w: 586, h: 394, fontSize: 23, leading: 32 };
-  if (position === "bottom") return { x: 84, y: 514, w: 1208, h: 180, fontSize: 22, leading: 30 };
-  return { x: 74, y: 82, w: 610, h: 420, fontSize: 23, leading: 32 };
+  if (position === "top") return { x: 74, y: 48, w: 1228, h: 178, minW: 660, minH: 126, fontSize: 21, leading: 28, padX: 42, padY: 34 };
+  if (position === "right") return { x: 716, y: 82, w: 586, h: 394, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
+  if (position === "bottom") return { x: 84, y: 514, w: 1208, h: 180, minW: 620, minH: 128, fontSize: 20, leading: 27, padX: 42, padY: 34 };
+  return { x: 74, y: 82, w: 610, h: 420, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
+}
+
+function layoutTextBox(body, footer, position) {
+  const base = getTextBox(position);
+  const bodyLength = body.length;
+  const shrink = bodyLength < 220 ? map(constrain(bodyLength, 40, 220), 40, 220, 0.68, 1) : 1;
+  const box = {
+    ...base,
+    w: Math.round(Math.max(base.minW, base.w * shrink)),
+  };
+
+  if (position === "top" || position === "bottom") {
+    box.x = Math.round((1376 - box.w) / 2);
+  } else if (position === "right") {
+    box.x = base.x + (base.w - box.w);
+  }
+
+  fitTextToBox(body, box, footer);
+  return box;
+}
+
+function fitTextToBox(body, box, footer) {
+  const footerH = footer ? 42 : 0;
+  const footerGap = footer ? 18 : 0;
+  let lines = [];
+
+  while (box.fontSize >= 17) {
+    textSize(box.fontSize);
+    textLeading(box.leading);
+    lines = wrapTextLines(body, box.w - box.padX * 2);
+    const bodyH = lines.length * box.leading;
+    const wantedH = bodyH + box.padY * 2 + footerGap + footerH;
+    if (wantedH <= box.h || box.fontSize === 17) break;
+    box.fontSize -= 1;
+    box.leading = Math.max(23, box.leading - 1);
+  }
+
+  const bodyH = lines.length * box.leading;
+  const wantedH = bodyH + box.padY * 2 + footerGap + footerH;
+  box.h = Math.max(box.minH, Math.min(box.h, Math.ceil(wantedH)));
+  const bodyAreaH = box.h - box.padY * 2 - footerGap - footerH;
+  box.bodyH = bodyAreaH;
+  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2);
+  box.footerY = box.y + box.h - box.padY - footerH + 3;
+}
+
+function wrapTextLines(value, maxWidth) {
+  const lines = [];
+  const paragraphs = value.split("\n");
+  paragraphs.forEach((paragraph) => {
+    let line = "";
+    paragraph.split(/\s+/).forEach((word) => {
+      const testLine = line ? `${line} ${word}` : word;
+      if (line && textWidth(testLine) > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = testLine;
+      }
+    });
+    if (line) lines.push(line);
+  });
+  return lines.length ? lines : [""];
 }
 
 function drawPanel(x, y, w, h, colorValue) {
@@ -284,17 +351,20 @@ function drawTextBoxUi(x, y, w, h) {
 }
 
 function drawChoiceCard(x, y, w, h, option, index) {
-  drawPanel(x, y, w, h, COLORS.panelStrong);
+  drawTextBoxUi(x, y, w, h);
   const uiKey = index === 0 ? "yellowChoice1" : index === 1 ? "greenChoice2" : "whiteChoice3";
-  drawUiImage(uiKey, x + 18, y + 18, 70, 70);
-  fill(COLORS.paper);
+  drawUiImage(uiKey, x + 22, y + 22, 62, 62);
+  fill(COLORS.ink);
+  textAlign(LEFT, TOP);
   textStyle(BOLD);
   textSize(20);
-  text(option.label, x + 104, y + 31, w - 126, 42);
+  textLeading(24);
+  text(option.label, x + 100, y + 33, w - 128, 32);
   textStyle(NORMAL);
-  textSize(16);
-  textLeading(22);
-  text(option.text, x + 24, y + 98, w - 48, 76);
+  textSize(15);
+  textLeading(20);
+  text(option.text, x + 30, y + 98, w - 60, h - 120);
+  textAlign(LEFT, BASELINE);
 }
 
 function drawUiImage(key, x, y, w, h) {
@@ -415,8 +485,8 @@ function introPages() {
   return [
     page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
     page("intro", "Then his master thought that he would no longer feed him. The donkey noticed that the wind was blowing less and less and ran away, setting forth on the road to Bremen, where he thought he could become a town musician as he always had a good ear for sounds.", "left"),
-    page("road", "When he had gone a little way he found a hunting dog lying in the road, who was panting like one who had run himself tired.", "left"),
-    page("road", "\"Why are you panting so, hunting dog?\" asked the donkey. \"Oh,\" said the dog, \"because I am old and am getting weaker every day and can no longer go hunting, my master wanted to kill me, so I ran off; but now how should I earn my bread?\"", "left", "dogChoice"),
+    page("dogGood", "When he had gone a little way he found a hunting dog lying in the road, who was panting like one who had run himself tired.", "left"),
+    page("dogGood", "\"Why are you panting so, hunting dog?\" asked the donkey. \"Oh,\" said the dog, \"because I am old and am getting weaker every day and can no longer go hunting, my master wanted to kill me, so I ran off; but now how should I earn my bread?\"", "left", "dogChoice"),
   ];
 }
 
@@ -461,14 +531,15 @@ function catIntroPages() {
     ? "It didn't take long, before the donkey and the former hunting dog came to a cat sitting by the side of the road and making a face like three days of rainy weather."
     : "It didn't take long, before the donkey came to a cat sitting by the side of the road and making a face like three days of rainy weather.";
   return [
-    page(withDog ? "catDog" : "catDonkey", `${text} \"What has crossed you, old Milk-Licker?\" said the donkey.`, "left"),
-    page(withDog ? "catDog" : "catDonkey", "\"Oh,\" answered the cat, \"who can be cheerful when his neck is at risk? I am getting on in years, and my teeth are getting dull, so I would rather sit behind the stove and purr than to chase around after mice. Therefore, my mistress wanted to drown me, but I took off. Now good advice is scarce. Where should I go?\"", "left", "catChoice"),
+    page(withDog ? "catDogSad" : "catDonkey", `${text} \"What has crossed you, old Milk-Licker?\" said the donkey.`, "left"),
+    page(withDog ? "catDogSad" : "catDonkey", "\"Oh,\" answered the cat, \"who can be cheerful when his neck is at risk? I am getting on in years, and my teeth are getting dull, so I would rather sit behind the stove and purr than to chase around after mice. Therefore, my mistress wanted to drown me, but I took off. Now good advice is scarce. Where should I go?\"", "left", "catChoice"),
   ];
 }
 
 function catChoice() {
+  const withDog = companions.dog;
   return {
-    image: companions.dog ? "catDog" : "catDonkey",
+    image: withDog ? "catDogSad" : "catDonkey",
     question: "How should the donkey answer the cat?",
     options: [
       {
@@ -476,7 +547,7 @@ function catChoice() {
         text: "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\"",
         joins: "cat",
         pages: [
-          page("catGood", "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey on his journey.", "left"),
+          page(withDog ? "catGoodDog" : "catGoodDonkey", "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey on his journey.", "left"),
           page("road", "They continued along the road toward Bremen.", "left", "roosterIntro"),
         ],
       },
@@ -484,7 +555,7 @@ function catChoice() {
         label: "Choice 2",
         text: "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\"",
         pages: [
-          page(companions.dog ? "catDog" : "catDonkey", "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\" The donkey spouted. The cat was baffled by the mean words, they were true but mean. With a big huff and puff the cat decided to turn around and sleep declining the offer.", "left"),
+          page(withDog ? "catDogSad" : "catDonkey", "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\" The donkey spouted. The cat was baffled by the mean words, they were true but mean. With a big huff and puff the cat decided to turn around and sleep declining the offer.", "left"),
           page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
         ],
       },
@@ -492,7 +563,7 @@ function catChoice() {
         label: "Choice 3",
         text: "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\"",
         pages: [
-          page(companions.dog ? "catDog" : "catDonkey", "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\" The donkey said in a joking manner, trying to get laughs but instead was met with a hiss from the cat so shrill and lethal, it made the donkey flee and run along the path, far away from the cat.", "left"),
+          page(withDog ? "catDogSad" : "catDonkey", "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\" The donkey said in a joking manner, trying to get laughs but instead was met with a hiss from the cat so shrill and lethal, it made the donkey flee and run along the path, far away from the cat.", "left"),
           page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
         ],
       },
