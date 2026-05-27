@@ -182,10 +182,11 @@ Bad ending:
 - Road transition images may be inserted between encounters so a previous animal scene does not remain visible during the next encounter.
 - Transparent animal images are used only for the tower stacking mini-game.
 - Text boxes are semi-transparent when they overlap full scene images.
-- The start page does not use the story text-box UI. Its title is centered, with compact control explanations below it.
-- The start page explains that light sensor UI means use the light sensor, slider UI means use the slider, red continues, and green/yellow/white are choices.
-- On the start page, the slider UI appears above the buttons and below the title. The light sensor UI sits with the button controls.
-- The start page tells the player they will have three choices and should choose wisely because choices affect the ending. It does not reveal which choice is good, neutral, or bad.
+- The first screen is the main starting page, using `main starting page.png` as the complete designed screen.
+- The app overlays only the red continue UI on the main starting page, placed in the lower middle area.
+- Pressing the red continue button moves from the main starting page to the light-sensor starting page.
+- The light-sensor starting page uses `starting page.png` and overlays only the live light value.
+- The story starts from the light-sensor starting page when the light sensor reaches the start threshold.
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
 - Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
 - Choice 1 uses the green button and appears on the left, choice 2 uses the yellow button and appears in the middle, and choice 3 uses the white button on the right.
@@ -200,6 +201,7 @@ Bad ending:
 
 Intro and road:
 
+- `main starting page.png`
 - `starting page.png`
 - `the old mill donkey intro.png`
 - `bg_road for walking.png`
@@ -273,17 +275,20 @@ UI:
 Music:
 
 - `IxD Bremen Town Musicians Background Music (1).mp3`
+- `IxD Bremen Town Musicians MiniGame (1).mp3`
 - `IxD Bremen Town Musicians Good Ending.mp3`
 - `IxD Bremen Town Musicians Neutral Ending.mp3`
 - `IxD Bremen Town Musicians Bad Ending.mp3`
 
 Music rules:
 
-- Background music loops during the start page, main story, and tower stacking game.
-- Background music stops when the ending is revealed.
+- No music plays on the main starting page.
+- Background music starts after the red continue button leaves the main starting page, then loops during the light-sensor starting page, main story, and tower stacking game.
+- After the tower stacking game, `IxD Bremen Town Musicians MiniGame (1).mp3` plays through the robber-house scare sequence.
+- The tower/post-tower music ends when the ending is revealed.
 - The good, neutral, or bad ending music starts when the matching ending image sequence appears.
 - Ending music loops because players may stay on ending scenes for longer.
-- Music transitions use a 0.5 second fade out/fade in crossfade.
+- Music transitions use a 1 second fade out/fade in crossfade.
 
 ## Mini-Game
 
