@@ -4,6 +4,7 @@ const ASSET_DIR = "Bremen Image Material";
 const LIGHT_START_THRESHOLD = 650;
 const MINI_GAME_LIGHT_THRESHOLD = 650;
 const SERIAL_BAUD_RATE = 9600;
+const MINI_GAME_CATCH_WINDOW = 82;
 
 const COLORS = {
   ink: "#2b1b10",
@@ -50,6 +51,7 @@ const FILES = {
   yellowChoice1: "UI Buttons yellow button choice 1.png",
   greenChoice2: "UI Buttons green button choice 2.png",
   whiteChoice3: "UI Buttons white button choice 3.png",
+  redRetry: "UI Buttons Red choice Retry .png",
   sliderUi: "Slider UI.png",
   lightUi: "Light sensor UI.png",
   textBox: "text box ui.png",
@@ -106,6 +108,7 @@ function draw() {
   else if (appState === "choice") drawChoicePage();
   else if (appState === "miniIntro") drawMiniIntro();
   else if (appState === "miniGame") drawMiniGame();
+  else if (appState === "miniResult") drawMiniResult();
   else if (appState === "fade") drawFade();
 
   pop();
@@ -148,32 +151,29 @@ function drawSceneImage(assetKey, overlay = 52) {
 
 function drawStart() {
   drawSceneImage("start", 48);
-  drawTextBoxUi(74, 74, 610, 482);
-  fill(COLORS.ink);
+  fill(COLORS.paper);
+  textAlign(CENTER, CENTER);
   textStyle(BOLD);
-  textSize(50);
-  text("The Bremen", 116, 142);
-  text("Town Musicians", 116, 200);
+  textSize(58);
+  text("The Bremen", 688, 206);
+  text("Town Musicians", 688, 274);
 
   textStyle(NORMAL);
-  textSize(23);
-  textLeading(32);
-  text(
-    `Cover the light sensor until the value is ${LIGHT_START_THRESHOLD} or higher. The story begins from this page once the threshold is met.`,
-    116,
-    258,
-    522,
-    128
-  );
-
-  drawUiImage("lightUi", 112, 406, 134, 98);
-  drawUiImage("redContinue", 112, 506, 42, 42);
-  fill(COLORS.ink);
-  textSize(21);
-  text(`Current light: ${lastLightValue ?? "--"}`, 270, 452);
   textSize(18);
-  fill("#684221");
-  text("Red continues. Yellow, green, and white choose when choices appear.", 170, 534, 468);
+  textLeading(22);
+  const buttonY = 390;
+  drawUiImage("lightUi", 284, buttonY - 34, 128, 92);
+  drawUiImage("redContinue", 510, buttonY, 54, 54);
+  drawUiImage("yellowChoice1", 662, buttonY, 54, 54);
+  drawUiImage("greenChoice2", 814, buttonY, 54, 54);
+  drawUiImage("whiteChoice3", 966, buttonY, 54, 54);
+  fill(COLORS.paper);
+  text(`Start story\nLight ${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 348, 484, 170, 54);
+  text("Continue", 537, 484, 130, 44);
+  text("Choice 1", 689, 484, 130, 44);
+  text("Choice 2", 841, 484, 130, 44);
+  text("Choice 3", 993, 484, 130, 44);
+  textAlign(LEFT, BASELINE);
 }
 
 function drawNarrativePage() {
@@ -204,14 +204,14 @@ function drawMiniGame() {
   drawSceneImage("lookingInside", 34);
   updateMiniGame();
 
-  drawPanel(54, 44, 468, 114, COLORS.panelStrong);
-  fill(COLORS.paper);
+  drawTextBoxUi(54, 58, 500, 128);
+  fill(COLORS.ink);
   textStyle(BOLD);
   textSize(28);
-  text("Stack the Musicians", 82, 86);
+  text("Stack the Musicians", 92, 100);
   textStyle(NORMAL);
   textSize(18);
-  text(`Catch the falling companion with the donkey. Slider value: ${Math.round(lastSliderValue)}`, 82, 122);
+  text(`Catch the falling companion with the donkey.\nSlider value: ${Math.round(lastSliderValue)}`, 92, 128);
   drawUiImage("sliderUi", 928, 52, 324, 65);
 
   imageMode(CENTER);
@@ -221,6 +221,33 @@ function drawMiniGame() {
     image(img, miniGame.faller.x, miniGame.faller.y, animalWidth(miniGame.faller.kind), animalHeight(miniGame.faller.kind));
   }
   imageMode(CORNER);
+}
+
+function drawMiniResult() {
+  drawSceneImage("lookingInside", 38);
+  imageMode(CENTER);
+  drawStackedDonkeyAndCompanions();
+  imageMode(CORNER);
+
+  const caughtAny = miniGame.stack.length > 0;
+  drawTextBoxUi(384, 82, 608, caughtAny ? 176 : 224);
+  fill(COLORS.ink);
+  textAlign(CENTER, TOP);
+  textStyle(BOLD);
+  textSize(30);
+  text(caughtAny ? "Good job, you built a tower!" : "Try building the tower again.", 430, 128, 516, 44);
+  textStyle(NORMAL);
+  textSize(18);
+  textLeading(24);
+  if (caughtAny) {
+    drawUiImage("redContinue", 638, 184, 54, 54);
+    text("Press red to continue.", 430, 248, 516, 30);
+  } else {
+    text("Catch at least one animal before the story continues.", 430, 180, 516, 52);
+    drawUiImage("redRetry", 638, 244, 54, 54);
+    text("Press red to retry.", 430, 310, 516, 30);
+  }
+  textAlign(LEFT, BASELINE);
 }
 
 function drawFade() {
@@ -259,10 +286,10 @@ function drawTextBox(body, footer, position) {
 }
 
 function getTextBox(position) {
-  if (position === "top") return { x: 74, y: 48, w: 1228, h: 178, minW: 660, minH: 126, fontSize: 21, leading: 28, padX: 42, padY: 34 };
-  if (position === "right") return { x: 716, y: 82, w: 586, h: 394, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
-  if (position === "bottom") return { x: 84, y: 514, w: 1208, h: 180, minW: 620, minH: 128, fontSize: 20, leading: 27, padX: 42, padY: 34 };
-  return { x: 74, y: 82, w: 610, h: 420, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
+  if (position === "top") return { x: 74, y: 74, w: 1228, h: 178, minW: 660, minH: 126, fontSize: 21, leading: 28, padX: 42, padY: 34 };
+  if (position === "right") return { x: 716, y: 112, w: 586, h: 394, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
+  if (position === "bottom") return { x: 84, y: 536, w: 1208, h: 180, minW: 620, minH: 128, fontSize: 20, leading: 27, padX: 42, padY: 34 };
+  return { x: 74, y: 112, w: 610, h: 420, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
 }
 
 function layoutTextBox(body, footer, position) {
@@ -353,17 +380,13 @@ function drawTextBoxUi(x, y, w, h) {
 function drawChoiceCard(x, y, w, h, option, index) {
   drawTextBoxUi(x, y, w, h);
   const uiKey = index === 0 ? "yellowChoice1" : index === 1 ? "greenChoice2" : "whiteChoice3";
-  drawUiImage(uiKey, x + 22, y + 22, 62, 62);
+  drawUiImage(uiKey, x + w / 2 - 31, y + 18, 62, 62);
   fill(COLORS.ink);
   textAlign(LEFT, TOP);
-  textStyle(BOLD);
-  textSize(20);
-  textLeading(24);
-  text(option.label, x + 100, y + 33, w - 128, 32);
   textStyle(NORMAL);
   textSize(15);
   textLeading(20);
-  text(option.text, x + 30, y + 98, w - 60, h - 120);
+  text(option.text, x + 30, y + 96, w - 60, h - 118);
   textAlign(LEFT, BASELINE);
 }
 
@@ -748,23 +771,41 @@ function updateMiniGame() {
   const faller = miniGame.faller;
   faller.y += faller.speed;
   faller.x = faller.baseX + sin(frameCount * 0.055 + faller.phase) * 95;
+  const catchY = stackTargetY(miniGame.stack.length);
 
-  if (faller.y > 535 && abs(faller.x - miniGame.donkeyX) < 150) {
+  if (faller.y > catchY && faller.y < catchY + MINI_GAME_CATCH_WINDOW && abs(faller.x - miniGame.donkeyX) < 150) {
     miniGame.stack.push(faller.kind);
     miniGame.currentIndex += 1;
-    if (miniGame.currentIndex >= miniGame.animals.length) {
-      fade = { startedAt: millis(), image: "crash" };
-      appState = "fade";
-    } else {
-      spawnNextFaller();
-    }
-  } else if (faller.y > 820) {
+    advanceMiniGameFaller();
+  } else if (faller.y > catchY + MINI_GAME_CATCH_WINDOW) {
+    miniGame.currentIndex += 1;
+    advanceMiniGameFaller();
+  }
+}
+
+function stackTargetY(index) {
+  return 640 - 110 - index * 82;
+}
+
+function advanceMiniGameFaller() {
+  if (miniGame.currentIndex >= miniGame.animals.length) {
+    miniGame.faller = null;
+    appState = "miniResult";
+  } else {
     spawnNextFaller();
   }
 }
 
 function handleContinueButton() {
   if (appState === "page") continueStory();
+  else if (appState === "miniResult") {
+    if (miniGame.stack.length > 0) {
+      fade = { startedAt: millis(), image: "crash" };
+      appState = "fade";
+    } else {
+      startMiniGame();
+    }
+  }
 }
 
 function handleLightValue(value) {

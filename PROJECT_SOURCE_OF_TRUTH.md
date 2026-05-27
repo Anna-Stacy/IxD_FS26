@@ -180,8 +180,9 @@ Bad ending:
 - Road transition images may be inserted between encounters so a previous animal scene does not remain visible during the next encounter.
 - Transparent animal images are used only for the tower stacking mini-game.
 - Text boxes are semi-transparent when they overlap full scene images.
+- The start page does not use the story text-box UI. Its title is centered, with compact control explanations below it.
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
-- Choice screens use one separate text-box UI image for each choice option.
+- Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
 - The old bottom party indicator has been removed.
 - Scene images are drawn with full-image containment to avoid cropping/over-zooming.
 
@@ -255,6 +256,7 @@ UI:
 - `UI Buttons yellow button choice 1.png`
 - `UI Buttons green button choice 2.png`
 - `UI Buttons white button choice 3.png`
+- `UI Buttons Red choice Retry .png`
 - `Slider UI.png`
 - `Light sensor UI.png`
 
@@ -270,9 +272,11 @@ Flow:
 4. Slider moves the donkey horizontally.
 5. One joined companion falls at a time in a zigzag motion.
 6. If caught, the companion stacks on the donkey and remains visible.
-7. The next joined companion falls.
-8. When all joined companions are stacked, a short fade transition plays.
-9. The story continues to the robber/ending sequence.
+7. The catch height follows the current stack height, so later animals snap onto the top of the tower instead of falling into the lower animal.
+8. If an animal is missed, the game advances to the next joined companion.
+9. After all joined companions have had a turn, a result screen appears.
+10. If at least one animal was caught, the result says "Good job, you built a tower!" and the red button continues.
+11. If no animals were caught, the result screen uses the red retry button and the player must retry before the story continues.
 
 Mini-game assets:
 
@@ -280,6 +284,10 @@ Mini-game assets:
 - `dog sitting full body transparent background.png`
 - `cat full body transparent background.png`
 - `rooster full body transparent background.png`
+
+Mini-game constants:
+
+- `MINI_GAME_CATCH_WINDOW = 82`
 
 ## Board Layout Mockup
 
