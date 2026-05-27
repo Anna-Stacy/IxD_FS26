@@ -1,10 +1,13 @@
 "use strict";
 
 const ASSET_DIR = "Bremen Image Material";
+const MUSIC_DIR = "Bremen_Music_Files";
 const LIGHT_START_THRESHOLD = 650;
 const MINI_GAME_LIGHT_THRESHOLD = 650;
 const SERIAL_BAUD_RATE = 9600;
 const MINI_GAME_CATCH_WINDOW = 82;
+const BUTTON_FEEDBACK_MS = 220;
+const MUSIC_VOLUME = 0.45;
 
 const COLORS = {
   ink: "#2b1b10",
@@ -61,7 +64,15 @@ const FILES = {
   roosterBody: "rooster full body transparent background.png",
 };
 
+const MUSIC_FILES = {
+  background: "IxD Bremen Town Musicians Background Music (1).mp3",
+  good: "IxD Bremen Town Musicians Good Ending.mp3",
+  neutral: "IxD Bremen Town Musicians Neutral Ending.mp3",
+  bad: "IxD Bremen Town Musicians Bad Ending.mp3",
+};
+
 const assets = {};
+const music = {};
 let serialPort = null;
 let serialReader = null;
 let serialBuffer = "";
@@ -80,11 +91,19 @@ let companions = { dog: false, cat: false, rooster: false };
 let resultType = null;
 let miniGame = null;
 let fade = null;
+let audioStarted = false;
+let currentMusicKey = null;
+let pendingContinue = null;
 
 function preload() {
   Object.entries(FILES).forEach(([key, filename]) => {
     assets[key] = loadImage(`${ASSET_DIR}/${filename}`);
   });
+  if (typeof loadSound === "function") {
+    Object.entries(MUSIC_FILES).forEach(([key, filename]) => {
+      music[key] = loadSound(`${MUSIC_DIR}/${filename}`);
+    });
+  }
 }
 
 function setup() {
@@ -94,8 +113,14 @@ function setup() {
   frameRate(60);
   resizeCanvasToWrap();
 
-  document.getElementById("connect-serial").addEventListener("click", connectSerial);
-  document.getElementById("demo-start").addEventListener("click", startStory);
+  document.getElementById("connect-serial").addEventListener("click", () => {
+    beginAudio();
+    connectSerial();
+  });
+  document.getElementById("demo-start").addEventListener("click", () => {
+    beginAudio();
+    startStory();
+  });
   updateHud();
 }
 
@@ -114,6 +139,7 @@ function draw() {
   else if (appState === "miniResult") drawMiniResult();
   else if (appState === "fade") drawFade();
 
+  updateMusic();
   pop();
 }
 
@@ -158,31 +184,36 @@ function drawStart() {
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(58);
-  text("The Bremen", 688, 188);
-  text("Town Musicians", 688, 256);
+  text("The Bremen", 688, 224);
+  text("Town Musicians", 688, 292);
 
   textStyle(NORMAL);
-  textSize(16);
-  textLeading(20);
-  const buttonY = 364;
-  drawUiImage("lightUi", 252, buttonY - 42, 154, 112);
-  drawUiImage("redContinue", 488, buttonY, 72, 72);
-  drawUiImage("greenChoice2", 640, buttonY, 72, 72);
-  drawUiImage("yellowChoice1", 792, buttonY, 72, 72);
-  drawUiImage("whiteChoice3", 944, buttonY, 72, 72);
+  textSize(15);
+  textLeading(19);
+  const buttonY = 414;
+  drawUiImage("lightUi", 166, buttonY - 42, 154, 112);
+  drawUiImage("sliderUi", 360, buttonY + 7, 178, 36);
+  drawUiImage("redContinue", 600, buttonY, 78, 78);
+  drawUiImage("greenChoice2", 760, buttonY, 78, 78);
+  drawUiImage("yellowChoice1", 920, buttonY, 78, 78);
+  drawUiImage("whiteChoice3", 1080, buttonY, 78, 78);
   fill(COLORS.paper);
-  text(`Start story\nCover light sensor\n${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 218, buttonY + 126, 222, 76);
-  text("Continue\nAdvance text", 459, buttonY + 126, 130, 60);
-  text("Choice 1\nGood option", 611, buttonY + 126, 130, 60);
-  text("Choice 2\nNeutral option", 763, buttonY + 126, 130, 60);
-  text("Choice 3\nBad option", 915, buttonY + 126, 130, 60);
+  text(`Light sensor\nUse when this icon appears\n${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 130, buttonY + 130, 226, 76);
+  text("Slider\nUse during the tower game", 340, buttonY + 130, 218, 56);
+  text("Red button\nContinue the story", 574, buttonY + 130, 130, 56);
+  text("Green button\nChoice 1", 734, buttonY + 130, 130, 56);
+  text("Yellow button\nChoice 2", 894, buttonY + 130, 130, 56);
+  text("White button\nChoice 3", 1054, buttonY + 130, 130, 56);
+  textSize(18);
+  textLeading(24);
+  text("You will have three choices. Choose wisely; your ending changes with your decisions.", 348, 636, 680, 58);
   textAlign(LEFT, BASELINE);
 }
 
 function drawNarrativePage() {
   const page = pages[pageIndex];
   drawSceneImage(page.image, page.overlay ?? 46);
-  drawTextBox(page.text, page.showContinueHint ? "Press red to continue." : "red-icon-only", page.position || "left");
+  drawTextBox(page.text, "red-icon-only", page.position || "left");
 }
 
 function drawChoicePage() {
@@ -193,7 +224,7 @@ function drawChoicePage() {
     drawChoiceCard(box.x, box.y, box.w, box.h, option, index, choiceFeedback?.index === index);
   });
 
-  if (appState === "choiceFeedback" && millis() - choiceFeedback.startedAt >= 1000) {
+  if (appState === "choiceFeedback" && millis() - choiceFeedback.startedAt >= BUTTON_FEEDBACK_MS) {
     applyChoice(choiceFeedback.index);
   }
 }
@@ -248,10 +279,10 @@ function drawMiniResult() {
   textSize(18);
   textLeading(24);
   if (caughtAny) {
-    drawUiButton("redContinue", 638, 184, 54, 54, millis() < continueFeedbackUntil);
+    drawUiButton("redContinue", 654, 182, 68, 68, millis() < continueFeedbackUntil);
   } else {
     text("Catch at least one animal before the story continues.", 430, 180, 516, 52);
-    drawUiButton("redRetry", 638, 244, 54, 54, millis() < continueFeedbackUntil);
+    drawUiButton("redRetry", 654, 244, 68, 68, millis() < continueFeedbackUntil);
     text("Press red to retry.", 430, 310, 516, 30);
   }
   textAlign(LEFT, BASELINE);
@@ -282,7 +313,7 @@ function drawTextBox(body, footer, position) {
   text(body, box.x + box.padX, box.bodyY, box.w - box.padX * 2, box.bodyH);
 
   if (box.showFooter) {
-    const buttonSize = 42.42;
+    const buttonSize = 56;
     const buttonX = box.x + box.padX;
     const buttonY = box.y + box.h - buttonSize / 3;
     drawUiButton("redContinue", buttonX, buttonY, buttonSize, buttonSize, millis() < continueFeedbackUntil);
@@ -435,6 +466,44 @@ function drawUiButton(key, x, y, w, h, isActive = false) {
   }
 }
 
+function beginAudio() {
+  if (audioStarted) return;
+  audioStarted = true;
+  if (typeof userStartAudio === "function") userStartAudio();
+  updateMusic();
+}
+
+function updateMusic() {
+  if (!audioStarted) return;
+  const desiredKey = desiredMusicKey();
+  const desiredTrack = music[desiredKey];
+  if (!desiredTrack || typeof desiredTrack.loop !== "function") return;
+
+  if (currentMusicKey === desiredKey && desiredTrack.isPlaying()) return;
+
+  Object.entries(music).forEach(([key, track]) => {
+    if (key !== desiredKey && track?.isPlaying()) track.stop();
+  });
+
+  if (typeof desiredTrack.setVolume === "function") desiredTrack.setVolume(MUSIC_VOLUME);
+  if (!desiredTrack.isPlaying()) desiredTrack.loop();
+  currentMusicKey = desiredKey;
+}
+
+function desiredMusicKey() {
+  return endingMusicKeyForCurrentPage() || "background";
+}
+
+function endingMusicKeyForCurrentPage() {
+  if (appState !== "page") return null;
+  const currentPage = pages[pageIndex];
+  if (!currentPage) return null;
+  if (currentPage.image === "bad") return "bad";
+  if (currentPage.image === "goodAnimals" || currentPage.image === "goodFinal") return "good";
+  if (currentPage.image === "neutralFinal" || currentPage.image.startsWith("neutral")) return "neutral";
+  return null;
+}
+
 function drawStackedDonkeyAndCompanions() {
   const donkeyX = map(lastSliderValue, 0, 1023, 196, 1180);
   const baseY = 640;
@@ -460,6 +529,7 @@ function animalHeight(kind) {
 }
 
 function startStory() {
+  beginAudio();
   resetStoryState();
   pages = introPages();
   pageIndex = 0;
@@ -467,6 +537,10 @@ function startStory() {
 }
 
 function resetStoryState() {
+  if (pendingContinue) {
+    clearTimeout(pendingContinue);
+    pendingContinue = null;
+  }
   appState = "start";
   pages = [];
   pageIndex = 0;
@@ -528,6 +602,7 @@ function showChoice(choice) {
 
 function chooseOption(index) {
   if (appState !== "choice") return;
+  beginAudio();
   const option = currentChoice.options[index];
   if (!option) return;
   choiceFeedback = { index, startedAt: millis() };
@@ -556,7 +631,7 @@ function joinedCompanions() {
 
 function introPages() {
   return [
-    page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left", null, true),
+    page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
     page("intro", "Then his master thought that he would no longer feed him. The donkey noticed that the wind was blowing less and less and ran away, setting forth on the road to Bremen, where he thought he could become a town musician as he always had a good ear for sounds.", "left"),
     page("dogGood", "When he had gone a little way he found a hunting dog lying in the road, who was panting like one who had run himself tired.", "left"),
     page("dogGood", "\"Why are you panting so, hunting dog?\" asked the donkey. \"Oh,\" said the dog, \"because I am old and am getting weaker every day and can no longer go hunting, my master wanted to kill me, so I ran off; but now how should I earn my bread?\"", "left", "dogChoice"),
@@ -847,7 +922,16 @@ function advanceMiniGameFaller() {
 }
 
 function handleContinueButton() {
-  continueFeedbackUntil = millis() + 1000;
+  if (pendingContinue || (appState !== "page" && appState !== "miniResult")) return;
+  beginAudio();
+  continueFeedbackUntil = millis() + BUTTON_FEEDBACK_MS;
+  pendingContinue = setTimeout(() => {
+    pendingContinue = null;
+    performContinueAction();
+  }, BUTTON_FEEDBACK_MS);
+}
+
+function performContinueAction() {
   if (appState === "page") continueStory();
   else if (appState === "miniResult") {
     if (miniGame.stack.length > 0) {
@@ -861,7 +945,10 @@ function handleContinueButton() {
 
 function handleLightValue(value) {
   lastLightValue = constrain(value, 0, 1023);
-  if (appState === "start" && lastLightValue >= LIGHT_START_THRESHOLD) startStory();
+  if (appState === "start" && lastLightValue >= LIGHT_START_THRESHOLD) {
+    beginAudio();
+    startStory();
+  }
   if (appState === "miniIntro" && lastLightValue >= MINI_GAME_LIGHT_THRESHOLD) startMiniGame();
 }
 
@@ -934,6 +1021,7 @@ function parseSerialLine(line) {
 }
 
 function keyPressed() {
+  beginAudio();
   if (keyCode === ENTER || key === " ") handleContinueButton();
   else if (key === "1") chooseOption(0);
   else if (key === "2") chooseOption(1);

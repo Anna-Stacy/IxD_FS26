@@ -9,6 +9,7 @@ Create an interactive retelling of *The Bremen Town Musicians* for the IxD inter
 The project uses:
 
 - **p5.js** for visuals, branching story interaction, and the tower stacking mini-game.
+- **p5.sound** for looping background and ending music.
 - **Arduino IDE** for the Arduino Micro controller.
 - **Arduino Micro hardware** connected to the laptop over USB serial.
 
@@ -25,6 +26,7 @@ The browser application is launched from:
 The app uses existing assets from:
 
 - `Bremen Image Material/`
+- `Bremen_Music_Files/`
 
 ## Browser Requirement
 
@@ -181,13 +183,15 @@ Bad ending:
 - Transparent animal images are used only for the tower stacking mini-game.
 - Text boxes are semi-transparent when they overlap full scene images.
 - The start page does not use the story text-box UI. Its title is centered, with compact control explanations below it.
+- The start page explains that light sensor UI means use the light sensor, slider UI means use the slider, red continues, and green/yellow/white are choices.
+- The start page tells the player they will have three choices and should choose wisely because choices affect the ending. It does not reveal which choice is good, neutral, or bad.
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
 - Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
 - Choice 1 uses the green button and appears on the left, choice 2 uses the yellow button and appears in the middle, and choice 3 uses the white button on the right.
 - Choice boxes are kept smaller so scene artwork remains visible behind them.
 - When a choice is selected, only the choice button image lightens briefly before the story advances.
 - The red continue icon sits partly outside the story text box, with roughly one third inside the box and two thirds below it.
-- The "Press red to continue" instruction appears only on the first narrative scene. After that, the red continue icon appears without the repeated text.
+- The story pages use the red continue icon without repeating "Press red to continue"; the control is explained on the start page instead.
 - The old bottom party indicator has been removed.
 - Scene images are drawn with full-image containment to avoid cropping/over-zooming.
 
@@ -265,6 +269,20 @@ UI:
 - `Slider UI.png`
 - `Light sensor UI.png`
 
+Music:
+
+- `IxD Bremen Town Musicians Background Music (1).mp3`
+- `IxD Bremen Town Musicians Good Ending.mp3`
+- `IxD Bremen Town Musicians Neutral Ending.mp3`
+- `IxD Bremen Town Musicians Bad Ending.mp3`
+
+Music rules:
+
+- Background music loops during the start page, main story, and tower stacking game.
+- Background music stops when the ending is revealed.
+- The good, neutral, or bad ending music starts when the matching ending image sequence appears.
+- Ending music loops because players may stay on ending scenes for longer.
+
 ## Mini-Game
 
 The mini-game starts after a short explanation page.
@@ -280,7 +298,7 @@ Flow:
 7. The catch height follows the current stack height, so later animals snap onto the top of the tower instead of falling into the lower animal.
 8. If an animal is missed, the game advances to the next joined companion.
 9. After all joined companions have had a turn, a result screen appears.
-10. If at least one animal was caught, the result says "Good job, you built a tower!" and the red button continues without repeating the "Press red to continue" text.
+10. If at least one animal was caught, the result says "Good job, you built a tower!" and the red button continues without repeated instruction text.
 11. If no animals were caught, the result screen uses the red retry button and the player must retry before the story continues.
 
 Mini-game assets:
