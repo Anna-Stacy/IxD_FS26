@@ -184,6 +184,7 @@ Bad ending:
 - Text boxes are semi-transparent when they overlap full scene images.
 - The start page does not use the story text-box UI. Its title is centered, with compact control explanations below it.
 - The start page explains that light sensor UI means use the light sensor, slider UI means use the slider, red continues, and green/yellow/white are choices.
+- On the start page, the slider UI appears above the buttons and below the title. The light sensor UI sits with the button controls.
 - The start page tells the player they will have three choices and should choose wisely because choices affect the ending. It does not reveal which choice is good, neutral, or bad.
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
 - Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
@@ -282,6 +283,7 @@ Music rules:
 - Background music stops when the ending is revealed.
 - The good, neutral, or bad ending music starts when the matching ending image sequence appears.
 - Ending music loops because players may stay on ending scenes for longer.
+- Music transitions use a 0.5 second fade out/fade in crossfade.
 
 ## Mini-Game
 

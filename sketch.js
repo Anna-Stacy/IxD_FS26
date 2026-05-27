@@ -8,6 +8,7 @@ const SERIAL_BAUD_RATE = 9600;
 const MINI_GAME_CATCH_WINDOW = 82;
 const BUTTON_FEEDBACK_MS = 220;
 const MUSIC_VOLUME = 0.45;
+const MUSIC_FADE_SECONDS = 0.5;
 
 const COLORS = {
   ink: "#2b1b10",
@@ -94,6 +95,7 @@ let fade = null;
 let audioStarted = false;
 let currentMusicKey = null;
 let pendingContinue = null;
+let musicStopTimer = null;
 
 function preload() {
   Object.entries(FILES).forEach(([key, filename]) => {
@@ -180,7 +182,7 @@ function drawSceneImage(assetKey, overlay = 52) {
 
 function drawStart() {
   drawSceneImage("start", 48);
-  fill(COLORS.paper);
+  fill("#8a3f1f");
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(58);
@@ -190,23 +192,23 @@ function drawStart() {
   textStyle(NORMAL);
   textSize(15);
   textLeading(19);
-  const buttonY = 414;
-  drawUiImage("lightUi", 166, buttonY - 42, 154, 112);
-  drawUiImage("sliderUi", 360, buttonY + 7, 178, 36);
-  drawUiImage("redContinue", 600, buttonY, 78, 78);
-  drawUiImage("greenChoice2", 760, buttonY, 78, 78);
-  drawUiImage("yellowChoice1", 920, buttonY, 78, 78);
-  drawUiImage("whiteChoice3", 1080, buttonY, 78, 78);
+  const buttonY = 434;
+  drawUiImage("sliderUi", 502, 330, 372, 75);
+  drawUiImage("lightUi", 348, buttonY - 42, 154, 112);
+  drawUiImage("redContinue", 560, buttonY, 78, 78);
+  drawUiImage("greenChoice2", 720, buttonY, 78, 78);
+  drawUiImage("yellowChoice1", 880, buttonY, 78, 78);
+  drawUiImage("whiteChoice3", 1040, buttonY, 78, 78);
   fill(COLORS.paper);
-  text(`Light sensor\nUse when this icon appears\n${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 130, buttonY + 130, 226, 76);
-  text("Slider\nUse during the tower game", 340, buttonY + 130, 218, 56);
-  text("Red button\nContinue the story", 574, buttonY + 130, 130, 56);
-  text("Green button\nChoice 1", 734, buttonY + 130, 130, 56);
-  text("Yellow button\nChoice 2", 894, buttonY + 130, 130, 56);
-  text("White button\nChoice 3", 1054, buttonY + 130, 130, 56);
+  text("There will be a mini game where you will have to catch stuff, make sure to be ready!", 418, 397, 540, 42);
+  text(`Light sensor\nUse when this icon appears\n${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 312, buttonY + 116, 226, 76);
+  text("Red button\nContinue the story", 534, buttonY + 116, 130, 56);
+  text("Green button\nChoice 1", 694, buttonY + 116, 130, 56);
+  text("Yellow button\nChoice 2", 854, buttonY + 116, 130, 56);
+  text("White button\nChoice 3", 1014, buttonY + 116, 130, 56);
   textSize(18);
   textLeading(24);
-  text("You will have three choices. Choose wisely; your ending changes with your decisions.", 348, 636, 680, 58);
+  text("You will have three choices. Choose wisely; your ending changes with your decisions.", 348, 594, 680, 58);
   textAlign(LEFT, BASELINE);
 }
 
@@ -481,12 +483,32 @@ function updateMusic() {
 
   if (currentMusicKey === desiredKey && desiredTrack.isPlaying()) return;
 
+  if (musicStopTimer) {
+    clearTimeout(musicStopTimer);
+    musicStopTimer = null;
+  }
+
+  const previousTracks = [];
   Object.entries(music).forEach(([key, track]) => {
-    if (key !== desiredKey && track?.isPlaying()) track.stop();
+    if (key !== desiredKey && track?.isPlaying()) {
+      previousTracks.push(track);
+      if (typeof track.setVolume === "function") track.setVolume(0, MUSIC_FADE_SECONDS);
+    }
   });
 
-  if (typeof desiredTrack.setVolume === "function") desiredTrack.setVolume(MUSIC_VOLUME);
+  if (typeof desiredTrack.setVolume === "function") desiredTrack.setVolume(0);
   if (!desiredTrack.isPlaying()) desiredTrack.loop();
+  if (typeof desiredTrack.setVolume === "function") desiredTrack.setVolume(MUSIC_VOLUME, MUSIC_FADE_SECONDS);
+
+  if (previousTracks.length > 0) {
+    musicStopTimer = setTimeout(() => {
+      previousTracks.forEach((track) => {
+        if (track?.isPlaying()) track.stop();
+      });
+      musicStopTimer = null;
+    }, MUSIC_FADE_SECONDS * 1000);
+  }
+
   currentMusicKey = desiredKey;
 }
 
