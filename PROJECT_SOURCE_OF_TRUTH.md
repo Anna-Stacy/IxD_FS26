@@ -184,8 +184,10 @@ Bad ending:
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
 - Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
 - Choice 1 uses the green button and appears on the left, choice 2 uses the yellow button and appears in the middle, and choice 3 uses the white button on the right.
-- When a choice is selected, its choice box darkens briefly before the story advances.
-- The "Press red to continue" instruction appears only on the first narrative scene. After that, the red continue icon can appear without the repeated text.
+- Choice boxes are kept smaller so scene artwork remains visible behind them.
+- When a choice is selected, only the choice button image lightens briefly before the story advances.
+- The red continue icon sits partly outside the story text box, with roughly one third inside the box and two thirds below it.
+- The "Press red to continue" instruction appears only on the first narrative scene. After that, the red continue icon appears without the repeated text.
 - The old bottom party indicator has been removed.
 - Scene images are drawn with full-image containment to avoid cropping/over-zooming.
 
@@ -278,7 +280,7 @@ Flow:
 7. The catch height follows the current stack height, so later animals snap onto the top of the tower instead of falling into the lower animal.
 8. If an animal is missed, the game advances to the next joined companion.
 9. After all joined companions have had a turn, a result screen appears.
-10. If at least one animal was caught, the result says "Good job, you built a tower!" and the red button continues.
+10. If at least one animal was caught, the result says "Good job, you built a tower!" and the red button continues without repeating the "Press red to continue" text.
 11. If no animals were caught, the result screen uses the red retry button and the player must retry before the story continues.
 
 Mini-game assets:

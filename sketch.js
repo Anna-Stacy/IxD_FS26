@@ -75,6 +75,7 @@ let pages = [];
 let pageIndex = 0;
 let currentChoice = null;
 let choiceFeedback = null;
+let continueFeedbackUntil = 0;
 let companions = { dog: false, cat: false, rooster: false };
 let resultType = null;
 let miniGame = null;
@@ -161,20 +162,20 @@ function drawStart() {
   text("Town Musicians", 688, 256);
 
   textStyle(NORMAL);
-  textSize(18);
-  textLeading(22);
-  const buttonY = 380;
-  drawUiImage("lightUi", 284, buttonY - 34, 128, 92);
-  drawUiImage("redContinue", 510, buttonY, 54, 54);
-  drawUiImage("greenChoice2", 662, buttonY, 54, 54);
-  drawUiImage("yellowChoice1", 814, buttonY, 54, 54);
-  drawUiImage("whiteChoice3", 966, buttonY, 54, 54);
+  textSize(16);
+  textLeading(20);
+  const buttonY = 364;
+  drawUiImage("lightUi", 252, buttonY - 42, 154, 112);
+  drawUiImage("redContinue", 488, buttonY, 72, 72);
+  drawUiImage("greenChoice2", 640, buttonY, 72, 72);
+  drawUiImage("yellowChoice1", 792, buttonY, 72, 72);
+  drawUiImage("whiteChoice3", 944, buttonY, 72, 72);
   fill(COLORS.paper);
-  text(`Start story\nLight ${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 263, buttonY + 118, 170, 54);
-  text("Continue", 472, buttonY + 118, 130, 44);
-  text("Choice 1", 624, buttonY + 118, 130, 44);
-  text("Choice 2", 776, buttonY + 118, 130, 44);
-  text("Choice 3", 928, buttonY + 118, 130, 44);
+  text(`Start story\nCover light sensor\n${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 218, buttonY + 126, 222, 76);
+  text("Continue\nAdvance text", 459, buttonY + 126, 130, 60);
+  text("Choice 1\nGood option", 611, buttonY + 126, 130, 60);
+  text("Choice 2\nNeutral option", 763, buttonY + 126, 130, 60);
+  text("Choice 3\nBad option", 915, buttonY + 126, 130, 60);
   textAlign(LEFT, BASELINE);
 }
 
@@ -247,11 +248,10 @@ function drawMiniResult() {
   textSize(18);
   textLeading(24);
   if (caughtAny) {
-    drawUiImage("redContinue", 638, 184, 54, 54);
-    text("Press red to continue.", 430, 248, 516, 30);
+    drawUiButton("redContinue", 638, 184, 54, 54, millis() < continueFeedbackUntil);
   } else {
     text("Catch at least one animal before the story continues.", 430, 180, 516, 52);
-    drawUiImage("redRetry", 638, 244, 54, 54);
+    drawUiButton("redRetry", 638, 244, 54, 54, millis() < continueFeedbackUntil);
     text("Press red to retry.", 430, 310, 516, 30);
   }
   textAlign(LEFT, BASELINE);
@@ -282,16 +282,15 @@ function drawTextBox(body, footer, position) {
   text(body, box.x + box.padX, box.bodyY, box.w - box.padX * 2, box.bodyH);
 
   if (box.showFooter) {
+    const buttonSize = 42.42;
+    const buttonX = box.x + box.padX;
+    const buttonY = box.y + box.h - buttonSize / 3;
+    drawUiButton("redContinue", buttonX, buttonY, buttonSize, buttonSize, millis() < continueFeedbackUntil);
     fill("#5a3518");
     textSize(18);
     textLeading(23);
-    if (footer.toLowerCase().includes("red")) {
-      drawUiImage("redContinue", box.x + box.padX, box.footerY - 9, 42.42, 42.42);
-      if (footer !== "red-icon-only") {
-        text(footer, box.x + box.padX + 54, box.footerY, box.w - box.padX * 2 - 54, 34);
-      }
-    } else {
-      text(footer, box.x + box.padX, box.footerY, box.w - box.padX * 2, 34);
+    if (footer !== "red-icon-only") {
+      text(footer, buttonX + 54, buttonY + 10, box.w - box.padX * 2 - 54, 34);
     }
   }
   textAlign(LEFT, BASELINE);
@@ -325,8 +324,8 @@ function layoutTextBox(body, footer, position) {
 }
 
 function fitTextToBox(body, box, footer) {
-  const footerH = box.showFooter ? 42 : 0;
-  const footerGap = box.showFooter ? 18 : 0;
+  const footerH = 0;
+  const footerGap = 0;
   let lines = [];
 
   while (box.fontSize >= 17) {
@@ -345,12 +344,12 @@ function fitTextToBox(body, box, footer) {
   box.h = Math.max(box.minH, Math.min(box.h, Math.ceil(wantedH)));
   const bodyAreaH = box.h - box.padY * 2 - footerGap - footerH;
   box.bodyH = bodyAreaH;
-  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2) + 8;
+  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2) + 4;
   box.footerY = box.y + box.h - box.padY - footerH + 3;
 }
 
 function shouldShowTextBoxFooter(footer) {
-  return Boolean(footer);
+  return Boolean(footer && footer.toLowerCase().includes("red"));
 }
 
 function wrapTextLines(value, maxWidth) {
@@ -396,9 +395,9 @@ function drawTextBoxUi(x, y, w, h) {
 
 function choiceCardBox(index) {
   const positions = [
-    { x: 54, y: 452, w: 398, h: 258 },
-    { x: 490, y: 452, w: 398, h: 258 },
-    { x: 926, y: 452, w: 398, h: 258 },
+    { x: 74, y: 514, w: 354, h: 192 },
+    { x: 512, y: 514, w: 354, h: 192 },
+    { x: 950, y: 514, w: 354, h: 192 },
   ];
   return positions[index];
 }
@@ -406,30 +405,34 @@ function choiceCardBox(index) {
 function drawChoiceCard(x, y, w, h, option, index, isSelected) {
   drawTextBoxUi(x, y, w, h);
   const uiKey = index === 0 ? "greenChoice2" : index === 1 ? "yellowChoice1" : "whiteChoice3";
-  drawUiImage(uiKey, x + w / 2 - 31, y + 18, 62, 62);
+  drawUiButton(uiKey, x + w / 2 - 30, y + 14, 60, 60, isSelected);
   fill(COLORS.ink);
   textAlign(LEFT, TOP);
   textStyle(NORMAL);
-  textSize(15);
-  textLeading(20);
+  textSize(13);
+  textLeading(17);
   const textX = x + 30;
-  const textY = y + 92;
+  const textY = y + 82;
   const textW = w - 60;
-  const textH = h - 108;
+  const textH = h - 94;
   const lines = wrapTextLines(option.text, textW);
-  const lineH = 20;
+  const lineH = 17;
   const visibleH = Math.min(textH, lines.length * lineH);
   text(option.text, textX, textY + Math.max(0, (textH - visibleH) / 2), textW, textH);
-  if (isSelected) {
-    noStroke();
-    fill(0, 0, 0, 26);
-    rect(x, y, w, h, 8);
-  }
   textAlign(LEFT, BASELINE);
 }
 
 function drawUiImage(key, x, y, w, h) {
   image(assets[key], x, y, w, h);
+}
+
+function drawUiButton(key, x, y, w, h, isActive = false) {
+  drawUiImage(key, x, y, w, h);
+  if (isActive) {
+    noStroke();
+    fill(255, 255, 255, 58);
+    rect(x, y, w, h, 8);
+  }
 }
 
 function drawStackedDonkeyAndCompanions() {
@@ -844,6 +847,7 @@ function advanceMiniGameFaller() {
 }
 
 function handleContinueButton() {
+  continueFeedbackUntil = millis() + 1000;
   if (appState === "page") continueStory();
   else if (appState === "miniResult") {
     if (miniGame.stack.length > 0) {
