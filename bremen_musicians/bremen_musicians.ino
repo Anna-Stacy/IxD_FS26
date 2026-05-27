@@ -4,10 +4,10 @@
 // ============================================================
 //
 //  BUTTONS, active LOW with internal pull-up resistors:
-//    White  / Continue  -> Digital Pin 2 -> sends B1
-//    Red    / Choice 1  -> Digital Pin 3 -> sends B2
-//    Yellow / Choice 2  -> Digital Pin 4 -> sends B3
-//    Green  / Choice 3  -> Digital Pin 5 -> sends B4
+//    Red    / Continue  -> Digital Pin 2 -> sends B1
+//    White  / Choice 3  -> Digital Pin 3 -> sends B2
+//    Green  / Choice 1  -> Digital Pin 4 -> sends B3
+//    Yellow / Choice 2  -> Digital Pin 5 -> sends B4
 //
 //  ANALOG INPUTS:
 //    Slider / potentiometer -> Analog Pin A0 -> sends S:<0-1023>
@@ -19,28 +19,28 @@
 //
 //  PROTOCOL:
 //    READY     board started
-//    B1        white button pressed
-//    B2        red button pressed
-//    B3        yellow button pressed
-//    B4        green button pressed
+//    B1        red button pressed
+//    B2        white button pressed
+//    B3        green button pressed
+//    B4        yellow button pressed
 //    S:512     slider value
 //    L:700     light sensor value
 // ============================================================
 
-const int PIN_BTN_WHITE = 2;
-const int PIN_BTN_RED = 3;
-const int PIN_BTN_YELLOW = 4;
-const int PIN_BTN_GREEN = 5;
+const int PIN_BTN_RED = 2;
+const int PIN_BTN_WHITE = 3;
+const int PIN_BTN_GREEN = 4;
+const int PIN_BTN_YELLOW = 5;
 
 const int PIN_SLIDER = A0;
 const int PIN_LIGHT = A1;
 
 const int BUTTON_COUNT = 4;
 const int BUTTON_PINS[BUTTON_COUNT] = {
-  PIN_BTN_WHITE,
   PIN_BTN_RED,
-  PIN_BTN_YELLOW,
-  PIN_BTN_GREEN
+  PIN_BTN_WHITE,
+  PIN_BTN_GREEN,
+  PIN_BTN_YELLOW
 };
 
 const int DEBOUNCE_MS = 30;

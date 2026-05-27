@@ -10,13 +10,13 @@ This file documents the current image order in `sketch.js`.
 
 ## Dog Choice Branches
 
-Choice 1, yellow, dog joins:
+Choice 1, green, dog joins:
 
 1. `meeting the dog  happy and neutral choices .png`
 2. `bg_road for walking.png`
 3. Cat intro
 
-Choice 2, green, dog joins:
+Choice 2, yellow, dog joins:
 
 1. `meeting the dog  happy and neutral choices .png`
 2. `bg_road for walking.png`
@@ -40,14 +40,14 @@ If dog did not join:
 
 ## Cat Choice Branches
 
-Choice 1, yellow, cat joins:
+Choice 1, green, cat joins:
 
 1. If dog joined: `donkey and dog happy cat joining them good choice .png`
 2. If dog did not join: `Donkey alone meeting cat good choice cat joining.png`
 3. `bg_road for walking.png`
 4. Rooster intro
 
-Choice 2, green, cat does not join:
+Choice 2, yellow, cat does not join:
 
 1. If dog joined: `meeting the sad cat with donkey and dog.png`
 2. If dog did not join: `meeting cat only donkey bad and neutral choice.png`
@@ -81,12 +81,12 @@ If donkey, dog, and cat:
 
 ## Rooster Choice Branches
 
-Choice 1, yellow, rooster joins:
+Choice 1, green, rooster joins:
 
 1. Same rooster scene variant as above
 2. Forest / house sequence
 
-Choice 2, green, rooster joins:
+Choice 2, yellow, rooster joins:
 
 1. Same rooster scene variant as above
 2. Forest / house sequence

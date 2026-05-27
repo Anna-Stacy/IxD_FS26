@@ -33,8 +33,8 @@ Use Chrome or Edge for the Arduino connection because the app uses the Web Seria
 Keyboard fallback for testing:
 
 - `Space` or `Enter`: red button / continue
-- `1`: yellow button / choice 1
-- `2`: green button / choice 2
+- `1`: green button / choice 1
+- `2`: yellow button / choice 2
 - `3`: white button / choice 3
 - `Left` / `A`: move slider left
 - `Right` / `D`: move slider right
@@ -48,8 +48,8 @@ The repo sketch expects this mapping:
 | --- | --- | --- | --- |
 | Red button | Continue / advance story | D2 | `B1` |
 | White button | Choice 3 | D3 | `B2` |
-| Green button | Choice 2 | D4 | `B3` |
-| Yellow button | Choice 1 | D5 | `B4` |
+| Green button | Choice 1 | D4 | `B3` |
+| Yellow button | Choice 2 | D5 | `B4` |
 | Slider / potentiometer | Mini-game horizontal control | A0 | `S:<0-1023>` |
 | Light sensor | Starts story and mini-game when covered | A1 | `L:<0-1023>` |
 
@@ -122,8 +122,8 @@ The threshold should be calibrated after testing the actual sensor values for un
 | --- | --- | --- |
 | `B1` | Red | Continue |
 | `B2` | White | Choice 3 |
-| `B3` | Green | Choice 2 |
-| `B4` | Yellow | Choice 1 |
+| `B3` | Green | Choice 1 |
+| `B4` | Yellow | Choice 2 |
 
 ## Story Structure
 
@@ -183,6 +183,9 @@ Bad ending:
 - The start page does not use the story text-box UI. Its title is centered, with compact control explanations below it.
 - Narrative text boxes resize to the current text instead of using one fixed box size for every page.
 - Choice screens use one separate text-box UI image for each choice option. The button image is centered at the top of each choice box, and the old "Choice 1/2/3" text titles are not shown.
+- Choice 1 uses the green button and appears on the left, choice 2 uses the yellow button and appears in the middle, and choice 3 uses the white button on the right.
+- When a choice is selected, its choice box darkens briefly before the story advances.
+- The "Press red to continue" instruction appears only on the first narrative scene. After that, the red continue icon can appear without the repeated text.
 - The old bottom party indicator has been removed.
 - Scene images are drawn with full-image containment to avoid cropping/over-zooming.
 

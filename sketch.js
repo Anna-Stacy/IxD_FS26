@@ -74,6 +74,7 @@ let canvasSize = { scale: 1, x: 0, y: 0 };
 let pages = [];
 let pageIndex = 0;
 let currentChoice = null;
+let choiceFeedback = null;
 let companions = { dog: false, cat: false, rooster: false };
 let resultType = null;
 let miniGame = null;
@@ -106,6 +107,7 @@ function draw() {
   if (appState === "start") drawStart();
   else if (appState === "page") drawNarrativePage();
   else if (appState === "choice") drawChoicePage();
+  else if (appState === "choiceFeedback") drawChoicePage();
   else if (appState === "miniIntro") drawMiniIntro();
   else if (appState === "miniGame") drawMiniGame();
   else if (appState === "miniResult") drawMiniResult();
@@ -155,39 +157,44 @@ function drawStart() {
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(58);
-  text("The Bremen", 688, 206);
-  text("Town Musicians", 688, 274);
+  text("The Bremen", 688, 188);
+  text("Town Musicians", 688, 256);
 
   textStyle(NORMAL);
   textSize(18);
   textLeading(22);
-  const buttonY = 390;
+  const buttonY = 380;
   drawUiImage("lightUi", 284, buttonY - 34, 128, 92);
   drawUiImage("redContinue", 510, buttonY, 54, 54);
-  drawUiImage("yellowChoice1", 662, buttonY, 54, 54);
-  drawUiImage("greenChoice2", 814, buttonY, 54, 54);
+  drawUiImage("greenChoice2", 662, buttonY, 54, 54);
+  drawUiImage("yellowChoice1", 814, buttonY, 54, 54);
   drawUiImage("whiteChoice3", 966, buttonY, 54, 54);
   fill(COLORS.paper);
-  text(`Start story\nLight ${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 348, 484, 170, 54);
-  text("Continue", 537, 484, 130, 44);
-  text("Choice 1", 689, 484, 130, 44);
-  text("Choice 2", 841, 484, 130, 44);
-  text("Choice 3", 993, 484, 130, 44);
+  text(`Start story\nLight ${lastLightValue ?? "--"}/${LIGHT_START_THRESHOLD}`, 263, buttonY + 118, 170, 54);
+  text("Continue", 472, buttonY + 118, 130, 44);
+  text("Choice 1", 624, buttonY + 118, 130, 44);
+  text("Choice 2", 776, buttonY + 118, 130, 44);
+  text("Choice 3", 928, buttonY + 118, 130, 44);
   textAlign(LEFT, BASELINE);
 }
 
 function drawNarrativePage() {
   const page = pages[pageIndex];
   drawSceneImage(page.image, page.overlay ?? 46);
-  drawTextBox(page.text, "Press red to continue.", page.position || "left");
+  drawTextBox(page.text, page.showContinueHint ? "Press red to continue." : "red-icon-only", page.position || "left");
 }
 
 function drawChoicePage() {
   drawSceneImage(currentChoice.image, currentChoice.overlay ?? 42);
-  drawTextBox(currentChoice.question, "Choose with yellow, green, or white.", "top");
+  drawTextBox(currentChoice.question, "Choose with green, yellow, or white.", "top");
   currentChoice.options.forEach((option, index) => {
-    drawChoiceCard(54 + index * 436, 452, 398, 258, option, index);
+    const box = choiceCardBox(index);
+    drawChoiceCard(box.x, box.y, box.w, box.h, option, index, choiceFeedback?.index === index);
   });
+
+  if (appState === "choiceFeedback" && millis() - choiceFeedback.startedAt >= 1000) {
+    applyChoice(choiceFeedback.index);
+  }
 }
 
 function drawMiniIntro() {
@@ -273,14 +280,19 @@ function drawTextBox(body, footer, position) {
   textLeading(box.leading);
   textAlign(LEFT, TOP);
   text(body, box.x + box.padX, box.bodyY, box.w - box.padX * 2, box.bodyH);
-  fill("#5a3518");
-  textSize(18);
-  textLeading(23);
-  if (footer.toLowerCase().includes("red")) {
-    drawUiImage("redContinue", box.x + box.padX, box.footerY - 9, 42, 42);
-    text(footer, box.x + box.padX + 54, box.footerY, box.w - box.padX * 2 - 54, 34);
-  } else {
-    text(footer, box.x + box.padX, box.footerY, box.w - box.padX * 2, 34);
+
+  if (box.showFooter) {
+    fill("#5a3518");
+    textSize(18);
+    textLeading(23);
+    if (footer.toLowerCase().includes("red")) {
+      drawUiImage("redContinue", box.x + box.padX, box.footerY - 9, 42.42, 42.42);
+      if (footer !== "red-icon-only") {
+        text(footer, box.x + box.padX + 54, box.footerY, box.w - box.padX * 2 - 54, 34);
+      }
+    } else {
+      text(footer, box.x + box.padX, box.footerY, box.w - box.padX * 2, 34);
+    }
   }
   textAlign(LEFT, BASELINE);
 }
@@ -307,13 +319,14 @@ function layoutTextBox(body, footer, position) {
     box.x = base.x + (base.w - box.w);
   }
 
+  box.showFooter = shouldShowTextBoxFooter(footer);
   fitTextToBox(body, box, footer);
   return box;
 }
 
 function fitTextToBox(body, box, footer) {
-  const footerH = footer ? 42 : 0;
-  const footerGap = footer ? 18 : 0;
+  const footerH = box.showFooter ? 42 : 0;
+  const footerGap = box.showFooter ? 18 : 0;
   let lines = [];
 
   while (box.fontSize >= 17) {
@@ -332,8 +345,12 @@ function fitTextToBox(body, box, footer) {
   box.h = Math.max(box.minH, Math.min(box.h, Math.ceil(wantedH)));
   const bodyAreaH = box.h - box.padY * 2 - footerGap - footerH;
   box.bodyH = bodyAreaH;
-  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2);
+  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2) + 8;
   box.footerY = box.y + box.h - box.padY - footerH + 3;
+}
+
+function shouldShowTextBoxFooter(footer) {
+  return Boolean(footer);
 }
 
 function wrapTextLines(value, maxWidth) {
@@ -377,16 +394,37 @@ function drawTextBoxUi(x, y, w, h) {
   }
 }
 
-function drawChoiceCard(x, y, w, h, option, index) {
+function choiceCardBox(index) {
+  const positions = [
+    { x: 54, y: 452, w: 398, h: 258 },
+    { x: 490, y: 452, w: 398, h: 258 },
+    { x: 926, y: 452, w: 398, h: 258 },
+  ];
+  return positions[index];
+}
+
+function drawChoiceCard(x, y, w, h, option, index, isSelected) {
   drawTextBoxUi(x, y, w, h);
-  const uiKey = index === 0 ? "yellowChoice1" : index === 1 ? "greenChoice2" : "whiteChoice3";
+  const uiKey = index === 0 ? "greenChoice2" : index === 1 ? "yellowChoice1" : "whiteChoice3";
   drawUiImage(uiKey, x + w / 2 - 31, y + 18, 62, 62);
   fill(COLORS.ink);
   textAlign(LEFT, TOP);
   textStyle(NORMAL);
   textSize(15);
   textLeading(20);
-  text(option.text, x + 30, y + 96, w - 60, h - 118);
+  const textX = x + 30;
+  const textY = y + 92;
+  const textW = w - 60;
+  const textH = h - 108;
+  const lines = wrapTextLines(option.text, textW);
+  const lineH = 20;
+  const visibleH = Math.min(textH, lines.length * lineH);
+  text(option.text, textX, textY + Math.max(0, (textH - visibleH) / 2), textW, textH);
+  if (isSelected) {
+    noStroke();
+    fill(0, 0, 0, 26);
+    rect(x, y, w, h, 8);
+  }
   textAlign(LEFT, BASELINE);
 }
 
@@ -430,6 +468,7 @@ function resetStoryState() {
   pages = [];
   pageIndex = 0;
   currentChoice = null;
+  choiceFeedback = null;
   companions = { dog: false, cat: false, rooster: false };
   resultType = null;
   miniGame = null;
@@ -480,6 +519,7 @@ function advanceAfterPages() {
 
 function showChoice(choice) {
   currentChoice = choice;
+  choiceFeedback = null;
   appState = "choice";
 }
 
@@ -487,10 +527,17 @@ function chooseOption(index) {
   if (appState !== "choice") return;
   const option = currentChoice.options[index];
   if (!option) return;
+  choiceFeedback = { index, startedAt: millis() };
+  appState = "choiceFeedback";
+}
+
+function applyChoice(index) {
+  const option = currentChoice.options[index];
   if (option.joins) companions[option.joins] = true;
   pages = option.pages;
   pageIndex = 0;
   currentChoice = null;
+  choiceFeedback = null;
   appState = "page";
 }
 
@@ -506,7 +553,7 @@ function joinedCompanions() {
 
 function introPages() {
   return [
-    page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
+    page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left", null, true),
     page("intro", "Then his master thought that he would no longer feed him. The donkey noticed that the wind was blowing less and less and ran away, setting forth on the road to Bremen, where he thought he could become a town musician as he always had a good ear for sounds.", "left"),
     page("dogGood", "When he had gone a little way he found a hunting dog lying in the road, who was panting like one who had run himself tired.", "left"),
     page("dogGood", "\"Why are you panting so, hunting dog?\" asked the donkey. \"Oh,\" said the dog, \"because I am old and am getting weaker every day and can no longer go hunting, my master wanted to kill me, so I ran off; but now how should I earn my bread?\"", "left", "dogChoice"),
@@ -736,8 +783,8 @@ function neutralAnimalImage() {
   return "neutralRooster";
 }
 
-function page(image, text, position = "left", next = null) {
-  return { image, text, position, next };
+function page(image, text, position = "left", next = null, showContinueHint = false) {
+  return { image, text, position, next, showContinueHint };
 }
 
 function startMiniGame() {
@@ -868,8 +915,8 @@ function parseSerialLine(line) {
   }
 
   if (normalized === "B1" || normalized === "RED") handleContinueButton();
-  else if (normalized === "B4" || normalized === "YELLOW") chooseOption(0);
-  else if (normalized === "B3" || normalized === "GREEN") chooseOption(1);
+  else if (normalized === "B3" || normalized === "GREEN") chooseOption(0);
+  else if (normalized === "B4" || normalized === "YELLOW") chooseOption(1);
   else if (normalized === "B2" || normalized === "WHITE") chooseOption(2);
   else if (normalized.startsWith("S:") || normalized.startsWith("SLIDER:")) {
     const value = Number(normalized.split(":")[1]);
