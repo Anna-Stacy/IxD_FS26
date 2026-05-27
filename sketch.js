@@ -344,6 +344,7 @@ function layoutTextBox(body, footer, position) {
 function fitTextToBox(body, box, footer) {
   const footerH = 0;
   const footerGap = 0;
+  const bodySafety = 18;
   let lines = [];
 
   while (box.fontSize >= 17) {
@@ -351,18 +352,18 @@ function fitTextToBox(body, box, footer) {
     textLeading(box.leading);
     lines = wrapTextLines(body, box.w - box.padX * 2);
     const bodyH = lines.length * box.leading;
-    const wantedH = bodyH + box.padY * 2 + footerGap + footerH;
+    const wantedH = bodyH + box.padY * 2 + footerGap + footerH + bodySafety;
     if (wantedH <= box.h || box.fontSize === 17) break;
     box.fontSize -= 1;
     box.leading = Math.max(23, box.leading - 1);
   }
 
   const bodyH = lines.length * box.leading;
-  const wantedH = bodyH + box.padY * 2 + footerGap + footerH;
+  const wantedH = bodyH + box.padY * 2 + footerGap + footerH + bodySafety;
   box.h = Math.max(box.minH, Math.min(box.h, Math.ceil(wantedH)));
   const bodyAreaH = box.h - box.padY * 2 - footerGap - footerH;
   box.bodyH = bodyAreaH;
-  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2) + 4;
+  box.bodyY = box.y + box.padY + Math.max(0, (bodyAreaH - bodyH) / 2);
   box.footerY = box.y + box.h - box.padY - footerH + 3;
 }
 
@@ -659,6 +660,39 @@ function joinedCompanions() {
   return ["dog", "cat", "rooster"].filter((animal) => companions[animal]);
 }
 
+function formatAnimalList(animals) {
+  const names = animals.map((animal) => `the ${animal}`);
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
+
+function travelerAnimals(extraAnimals = []) {
+  const animals = ["donkey", ...joinedCompanions()];
+  extraAnimals.forEach((animal) => {
+    if (!animals.includes(animal)) animals.push(animal);
+  });
+  return animals;
+}
+
+function travelerLabel(extraAnimals = []) {
+  return formatAnimalList(travelerAnimals(extraAnimals));
+}
+
+function capitalizeSentence(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function travelerPronoun(extraAnimals = []) {
+  return travelerAnimals(extraAnimals).length === 1 ? "he" : "they";
+}
+
+function companionPhrase() {
+  const count = joinedCompanions().length;
+  if (count === 0) return "";
+  return count === 1 ? "his companion" : "his companions";
+}
+
 function introPages() {
   return [
     page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
@@ -687,7 +721,7 @@ function dogChoice() {
         text: "\"That is surely tiresome.\" Said the donkey. \"There is a town known for music, our old bones would surely fit in so join me!\"",
         joins: "dog",
         pages: [
-          page("dogGood", "The dog felt sceptic at the comment about his age. He was a proud hunting dog! \"Well, it seems enticing, well alright!\" The dog relented knowing he had no more hunting left in him.", "left"),
+          page("dogGood", "The dog felt skeptical at the comment about his age. He was a proud hunting dog! \"Well, it seems enticing, well alright!\" The dog relented knowing he had no more hunting left in him.", "left"),
           page("road", "They continued along the road toward Bremen.", "left", "catIntro"),
         ],
       },
@@ -716,6 +750,18 @@ function catIntroPages() {
 
 function catChoice() {
   const withDog = companions.dog;
+  const usOrMe = withDog ? "us" : "me";
+  const continuedWithoutCat = withDog
+    ? "The donkey and the dog continued along the road toward Bremen without the cat."
+    : "The donkey continued along the road toward Bremen without the cat.";
+  const fledFromCat = withDog
+    ? "it made the donkey and the dog flee and run along the path, far away from the cat."
+    : "it made the donkey flee and run along the path, far away from the cat.";
+  const catJoinText = withDog
+    ? "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey and dog on their journey."
+    : "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey on his journey.";
+  const catChoiceTwoText = `"Wouldn't it be better to have one last hurrah? In your old age. Come with ${usOrMe} to Bremen, it's better than staying here and waiting for your demise."`;
+  const catChoiceThreeText = `"Well you seem to be aging alright; I wanted to invite you to join ${usOrMe} in ${withDog ? "our" : "my"} adventure to be musicians but clearly you can't use your muscles like you used to..."`;
   return {
     image: withDog ? "catDogSad" : "catDonkey",
     question: "How should the donkey answer the cat?",
@@ -725,24 +771,24 @@ function catChoice() {
         text: "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\"",
         joins: "cat",
         pages: [
-          page(withDog ? "catGoodDog" : "catGoodDonkey", "\"Come along to Bremen! After all, you understand night music. You can become a town musician there and help draw an audience!\" said the donkey excitedly. The cat was surprised by the cheerful invitation, but the thought of becoming a musician sounded much better than sitting alone and afraid. Convinced, the cat joined the donkey on his journey.", "left"),
+          page(withDog ? "catGoodDog" : "catGoodDonkey", catJoinText, "left"),
           page("road", "They continued along the road toward Bremen.", "left", "roosterIntro"),
         ],
       },
       {
         label: "Choice 2",
-        text: "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\"",
+        text: catChoiceTwoText,
         pages: [
-          page(withDog ? "catDogSad" : "catDonkey", "\"Wouldn't it be better to have one last hurray? In your old age. Come with us/me to Bremen, its better than staying here and waiting for your demise.\" The donkey spouted. The cat was baffled by the mean words, they were true but mean. With a big huff and puff the cat decided to turn around and sleep declining the offer.", "left"),
-          page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
+          page(withDog ? "catDogSad" : "catDonkey", `${catChoiceTwoText} The donkey spouted. The cat was baffled by the mean words. They were true, but mean. With a big huff and puff, the cat decided to turn around and sleep, declining the offer.`, "left"),
+          page("road", continuedWithoutCat, "left", "roosterIntro"),
         ],
       },
       {
         label: "Choice 3",
-        text: "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\"",
+        text: catChoiceThreeText,
         pages: [
-          page(withDog ? "catDogSad" : "catDonkey", "\"Well you seem to be aging alright; I wanted to invite you to join us/me in our adventure to be musicians but clearly you can't use your muscles like you used to...\" The donkey said in a joking manner, trying to get laughs but instead was met with a hiss from the cat so shrill and lethal, it made the donkey flee and run along the path, far away from the cat.", "left"),
-          page("road", "The donkey continued along the road toward Bremen without the cat.", "left", "roosterIntro"),
+          page(withDog ? "catDogSad" : "catDonkey", `${catChoiceThreeText} The donkey said in a joking manner, trying to get laughs, but instead was met with a hiss from the cat so shrill and fierce that ${fledFromCat}`, "left"),
+          page("road", continuedWithoutCat, "left", "roosterIntro"),
         ],
       },
     ],
@@ -751,34 +797,44 @@ function catChoice() {
 
 function roosterIntroPages() {
   const image = roosterImage();
+  const travelers = travelerLabel();
+  const subject = travelerPronoun();
+  const firstLine = joinedCompanions().length === 0
+    ? "After travelling further along the road, the donkey came to a farmyard. He was tired from the day's journey, but he kept walking toward Bremen."
+    : `After travelling further along the road, ${travelers} came to a farmyard. ${capitalizeSentence(subject)} were tired from the day's journey, but the donkey felt less alone with every new friend who had walked beside him.`;
   return [
-    page(image, "After travelling further along the road, the donkey and their companion came to a farmyard. They were tired from the day's journey, but the donkey felt less alone with every new friend who had walked beside him.", "left"),
+    page(image, firstLine, "left"),
     page(image, "There, the rooster of the house was sitting on the gate, crying with all his might. \"Your cries pierce one's marrow and bone,\" said the donkey. \"What are you up to?\"", "left"),
     page(image, "\"I just prophesied good weather,\" said the rooster, \"because it is Our Dear Lady's Day, when she washes the Christ Child's shirts and wants to dry them; but because Sunday guests are coming tomorrow, the lady of the house has no mercy and told the cook that she wants to eat me tomorrow in the soup, so I am supposed to let them cut off my head this evening. Now I am going to cry at the top of my voice as long as I can.\"", "left", "roosterChoice"),
   ];
 }
 
 function roosterChoice() {
+  const partyIntro = joinedCompanions().length === 0
+    ? "I am headed off to the city to become a musician"
+    : "My companions and I are headed off to the city to become musicians";
+  const usOrMe = joinedCompanions().length === 0 ? "me" : "us";
+  const afterRoosterJoin = capitalizeSentence(travelerLabel(["rooster"]));
   return {
     image: roosterImage(),
     question: "How should the donkey answer the rooster?",
     options: [
       {
         label: "Choice 1",
-        text: "\"Hey now my fellow friend! That sounds tragic! My party and me are headed of to the city to become musicians! Why not join us and amaze the crowds with your beautiful voice?\"",
+        text: `"Hey now, my fellow friend! That sounds tragic! ${partyIntro}! Why not join ${usOrMe} and amaze the crowds with your beautiful voice?"`,
         joins: "rooster",
-        pages: [page(roosterImage(true), "\"Hey now my fellow friend! That sounds tragic! My party and me are headed of to the city to become musicians! Why not join us and amaze the crowds with your beautiful voice?\" Said the donkey excitedly. The rooster was happy with the proposal, and all four went off together.", "left", "forest")],
+        pages: [page(roosterImage(true), `"Hey now, my fellow friend! That sounds tragic! ${partyIntro}! Why not join ${usOrMe} and amaze the crowds with your beautiful voice?" said the donkey excitedly. The rooster was happy with the proposal, and ${afterRoosterJoin} went off together.`, "left", "forest")],
       },
       {
         label: "Choice 2",
         text: "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death.\"",
         joins: "rooster",
-        pages: [page(roosterImage(true), "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" Mentioned the Donkey sheepishly. The rooster was taken aback by the straight forwardness but agreed nonetheless.", "left", "forest")],
+        pages: [page(roosterImage(true), "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" The donkey added sheepishly. The rooster was taken aback by the straightforwardness but agreed nonetheless.", "left", "forest")],
       },
       {
         label: "Choice 3",
         text: "\"Well that does sound bad but with your shrill voice, do you believe you'll make a difference if you make noises all evening long?\"",
-        pages: [page(roosterImage(), "\"Well that does sound bad but with your shrill voice, do you believe you'll make a difference if you make noises all evening long? Better come with us, might as well put your voice to good use.\" The donkey snorted. The rooster was appalled and continued with the noise making, being louder than before. The donkey lowered their head in shame and walked on towards the city, regretting their choice of words.", "left", "forest")],
+        pages: [page(roosterImage(), `"Well that does sound bad but with your shrill voice, do you believe you'll make a difference if you make noises all evening long? Better come with ${usOrMe}; might as well put your voice to good use." The donkey snorted. The rooster was appalled and continued with the noise making, being louder than before. The donkey lowered his head in shame and walked on toward the city, regretting those words.`, "left", "forest")],
       },
     ],
   };
@@ -797,13 +853,13 @@ function roosterImage(afterJoin = false) {
 function forestPages() {
   if (resultType === "bad") {
     return [
-      page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left", "badEnding"),
+      page("house", "However, the donkey could not reach the city of Bremen in one day. In the evening, he came into a forest, where he decided to spend the night.", "left", "badEnding"),
     ];
   }
 
   if (resultType === "good") {
     return [
-      page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left"),
+      page("house", "However, the donkey and his companions could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left"),
       page("house", "The donkey and the dog lay down under a big tree, but the cat and the rooster took to the branches. The rooster flew right to the top, where it was safest for him.", "left"),
       page("house", "Before falling asleep he looked around once again in all four directions, and he thought that he saw a little spark burning in the distance. He hollered to his companions, that there must be a house not too far away, for a light was shining.", "left"),
       page("lookingInside", "The donkey said, \"Then we must get up and go there, because the lodging here is poor.\" The dog said that he could do well with a few bones with a little meat on them.", "left"),
@@ -814,14 +870,20 @@ function forestPages() {
     ];
   }
 
+  const travelers = travelerLabel();
+  const capitalizedTravelers = capitalizeSentence(travelers);
+  const companionText = companionPhrase();
+  const companionQuestion = joinedCompanions().length === 1 ? "his companion" : "one of his companions";
+  const companionResponse = joinedCompanions().length === 1 ? "his companion" : "one of his companions";
+
   return [
-    page("house", "However, the donkey and his companions, could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.", "left"),
-    page("house", "The donkey and his companion or companions settled down beneath a large tree in the forest. They had not gathered a complete band, but the donkey was no longer making the journey alone.", "left"),
-    page("house", "Before they could fall asleep, one of the animals noticed a little spark burning in the distance. It seemed that there must be a house nearby, for a light was shining through the darkness.", "left"),
+    page("house", `However, ${travelers} could not reach the city of Bremen in one day. In the evening, they came into a forest, where they decided to spend the night.`, "left"),
+    page("house", `${capitalizedTravelers} settled down beneath a large tree in the forest. They had not gathered a complete band, but the donkey was no longer making the journey alone.`, "left"),
+    page("house", `Before they could fall asleep, ${companionText} noticed a little spark burning in the distance. It seemed that there must be a house nearby, for a light was shining through the darkness.`, "left"),
     page("lookingInside", "\"Then we should go there,\" said the donkey. \"The lodging here is poor, and perhaps we may find something to eat.\" Tired and hungry, the small group set forth toward the light.", "left"),
     page("lookingInside", "It grew brighter and larger until they came to the front of a brightly lit robbers' house. The donkey, being the largest of them, approached the window and looked in.", "left"),
-    page("lookingInside", "\"What do you see?\" asked one of his companions. \"What do I see?\" answered the donkey. \"A table set with good things to eat and drink, and robbers sitting there enjoying themselves.\"", "left"),
-    page("lookingInside", "\"That would be something for us,\" said his companion. \"Ee-ah, ee-ah, oh, if we were there!\" said the donkey.", "left"),
+    page("lookingInside", `"What do you see?" asked ${companionQuestion}. "What do I see?" answered the donkey. "A table set with good things to eat and drink, and robbers sitting there enjoying themselves."`, "left"),
+    page("lookingInside", `"That would be something for us," said ${companionResponse}. "Ee-ah, ee-ah, oh, if we were there!" said the donkey.`, "left"),
     page("lookingInside", "Although there were fewer of them than there might have been, the animals discussed how they could drive the robbers away. At last, they came upon a desperate plan: they would climb onto one another as well as they could, crash against the window, and make the most terrible music the robbers had ever heard.", "left"),
     page("lookingInside", "The donkey stood at the bottom of their small tower. Any companions who had joined him climbed above him, each trying to appear louder and more frightening than they truly felt.", "left", "miniIntro"),
   ];
@@ -830,9 +892,9 @@ function forestPages() {
 function badEndingPages() {
   return [
     page("lookingInside", "Before falling asleep he looked around once again in all four directions, and he thought that he saw a little spark burning in the distance.", "left"),
-    page("lookingInside", "The donkey went and had a look inside the house, seeing robbers the donkey did not dare fight them alone. Carrying on throughout the woods. Tired, the donkey went to sleep.", "left"),
-    page("bad", "Waking up in the forest with no food and feeling lonely, the donkey made their way back to the mill it came from. Treading the day the farmer would not be able to feed them anymore.", "left"),
-    page("bad", "The donkey dream of being a musician slowly fades away like a distant memory.", "left", "end"),
+    page("lookingInside", "The donkey went and had a look inside the house. When he saw the robbers, he did not dare fight them alone. He carried on through the woods until, tired and hungry, he went to sleep.", "left"),
+    page("bad", "Waking up in the forest with no food and feeling lonely, the donkey made his way back to the mill he had come from, dreading the day the farmer would no longer be able to feed him.", "left"),
+    page("bad", "The donkey's dream of becoming a musician slowly faded away like a distant memory.", "left", "end"),
   ];
 }
 
@@ -841,7 +903,7 @@ function buildPostMiniPages() {
     return [
       page("crash", "When they had done that, at a signal they began to make their music all together. The donkey brayed, the dog barked, the cat meowed and the rooster crowed. Then they crashed through the window into the room, shattering the panes.", "left"),
       page("feast", "The robbers jumped up at the terrible bellowing, thinking that a ghost was coming in, and fled in great fear out into the woods.", "left"),
-      page("feast", "Then the four companions seated themselves at the table and freely partook of the leftovers, eating as if they would get nothing more for four weeks.", "left"),
+      page("feast", "Then the four animals seated themselves at the table and freely partook of the leftovers, eating as if they would get nothing more for four weeks.", "left"),
       page("darkHouse", "When the four minstrels were finished, they put out the light and looked for a place to sleep, each according to their nature and their desire.", "left"),
       page("darkHouse", "The donkey lay down on the hay pile, the dog behind the door, the cat on the hearth next to the warm ashes, and the rooster sat on the beam of the roof. Because they were tired from their long journey, they soon fell asleep.", "left"),
       page("robberInside", "When midnight had passed and the robbers saw from the distance that the light was no longer burning in the house, and everything appeared to be quiet, the captain said, \"We shouldn't have let ourselves be chased off,\" and he told one of them to go back and investigate the house.", "left"),
@@ -854,8 +916,15 @@ function buildPostMiniPages() {
     ];
   }
 
+  const companionCryText = joinedCompanions().length === 1
+    ? "his companion added another cry to the dreadful concert"
+    : "his companions added their own cries to the dreadful concert";
+  const restText = joinedCompanions().length === 1
+    ? "the donkey and his companion soon fell asleep"
+    : "they soon fell asleep";
+
   const pagesOut = [
-    page("crash", "At the donkey's signal, they began their music together. The donkey brayed at the top of his lungs, while his companion or companions added their own cries to the dreadful concert. Then they crashed through the window into the room, shattering the panes.", "left"),
+    page("crash", `At the donkey's signal, they began their music together. The donkey brayed at the top of his lungs, while ${companionCryText}. Then they crashed through the window into the room, shattering the panes.`, "left"),
     page("feast", "The robbers jumped up at the terrible noise. In the confusion and darkness, they believed that some horrible creature had broken into their house, and they fled in great fear into the woods.", "left"),
     page("darkHouse", "When the minstrels were finished, they put out the light and looked for places to sleep, each according to their nature and desire. The donkey lay down on the hay pile.", "left"),
   ];
@@ -864,7 +933,7 @@ function buildPostMiniPages() {
   if (companions.cat) pagesOut.push(page("darkHouse", "The cat settled on the hearth beside the warm ashes, finally finding a place where no one would chase her away.", "left"));
   if (companions.rooster) pagesOut.push(page("darkHouse", "The rooster flew up onto a beam of the roof, where he could watch safely from above.", "left"));
 
-  pagesOut.push(page("darkHouse", "Because they were tired from their long journey and the excitement of the night, they soon fell asleep.", "left"));
+  pagesOut.push(page("darkHouse", `Because they were tired from their long journey and the excitement of the night, ${restText}.`, "left"));
   pagesOut.push(page("robberInside", "When midnight had passed, the robbers saw from a distance that the light was no longer burning in the house and that everything appeared quiet. Their captain said, \"We should not have let ourselves be chased away,\" and he sent one of them back to investigate the house.", "left"));
   pagesOut.push(page("robberInside", "The robber carefully entered the dark house, believing that the frightening creatures from earlier had disappeared.", "left"));
 
@@ -875,7 +944,7 @@ function buildPostMiniPages() {
   pagesOut.push(page("robberFleeing", "When the robber ran across the yard past the hay pile, the donkey gave him a powerful blow with his hind foot. Terrified and bruised, the robber fled as fast as he could back to his captain.", "left"));
   pagesOut.push(page(neutralAnimalImage(), "When the robber returned to his captain, he could barely speak from fear. \"There is a black monster lying in the yard,\" he cried, \"and it struck me with a wooden club! There are other terrible creatures hiding inside as well. We must stay far away from that house!\"", "left"));
   pagesOut.push(page("neutralFinal", "From that time forth, the robbers did not dare go back into the house. The animals decided to make this their home and keep living there.", "left"));
-  pagesOut.push(page("neutralFinal", "The donkey and his band were relieved to have found safety and shelter. As the donkey looked at their small group, he could not help but think of the voices that were missing from their music. They had succeeded, but they were not yet the grand band he had dreamed of becoming.", "left", "end"));
+  pagesOut.push(page("neutralFinal", "The donkey and his small band were relieved to have found safety and shelter. As the donkey looked at their group, he could not help but think of the voices that were missing from their music. They had succeeded, but they were not yet the grand band he had dreamed of becoming.", "left", "end"));
   return pagesOut;
 }
 
