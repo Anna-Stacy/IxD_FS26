@@ -428,14 +428,23 @@ function drawChoiceCard(x, y, w, h, option, index, isSelected) {
   fill(COLORS.ink);
   textAlign(LEFT, TOP);
   textStyle(NORMAL);
-  textSize(13);
-  textLeading(17);
   const textX = x + 30;
   const textY = y + 82;
   const textW = w - 60;
   const textH = h - 94;
-  const lines = wrapTextLines(option.text, textW);
-  const lineH = 17;
+  let fontSize = 13;
+  let lineH = 17;
+  let lines = [];
+  while (fontSize >= 10) {
+    textSize(fontSize);
+    textLeading(lineH);
+    lines = wrapTextLines(option.text, textW);
+    if (lines.length * lineH <= textH || fontSize === 10) break;
+    fontSize -= 1;
+    lineH = Math.max(13, lineH - 1);
+  }
+  textSize(fontSize);
+  textLeading(lineH);
   const visibleH = Math.min(textH, lines.length * lineH);
   text(option.text, textX, textY + Math.max(0, (textH - visibleH) / 2), textW, textH);
   textAlign(LEFT, BASELINE);
@@ -814,7 +823,13 @@ function roosterChoice() {
     ? "I am headed off to the city to become a musician"
     : "My companions and I are headed off to the city to become musicians";
   const usOrMe = joinedCompanions().length === 0 ? "me" : "us";
-  const afterRoosterJoin = capitalizeSentence(travelerLabel(["rooster"]));
+  const afterRoosterJoin = travelerLabel(["rooster"]);
+  const roosterChoiceTwoText = joinedCompanions().length === 0
+    ? "\"Hey now, Red-Head,\" said the donkey, \"instead come away with me. I am going to Bremen. You can always find something better than death.\""
+    : "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death.\"";
+  const roosterChoiceTwoResultText = joinedCompanions().length === 0
+    ? "\"Hey now, Red-Head,\" said the donkey, \"instead come away with me. I am going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" The donkey added sheepishly. The rooster was taken aback by the straightforwardness but agreed nonetheless."
+    : "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" The donkey added sheepishly. The rooster was taken aback by the straightforwardness but agreed nonetheless.";
   return {
     image: roosterImage(),
     question: "How should the donkey answer the rooster?",
@@ -827,9 +842,9 @@ function roosterChoice() {
       },
       {
         label: "Choice 2",
-        text: "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death.\"",
+        text: roosterChoiceTwoText,
         joins: "rooster",
-        pages: [page(roosterImage(true), "\"Hey now, Red-Head,\" said the donkey, \"instead come away with us. We're going to Bremen. You can always find something better than death. You have a good voice, and when we make music together, it will be very pleasing.\" The donkey added sheepishly. The rooster was taken aback by the straightforwardness but agreed nonetheless.", "left", "forest")],
+        pages: [page(roosterImage(true), roosterChoiceTwoResultText, "left", "forest")],
       },
       {
         label: "Choice 3",
