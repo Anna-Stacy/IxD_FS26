@@ -1,4 +1,9 @@
 :root {
+  /* Lecturer QA: UI styling answer.
+    The website UI outside the p5 canvas is styled here with CSS variables, while the story UI inside
+    the canvas is drawn in sketch.js. These variables define the dark page frame, HUD panel, readable
+    text colors, and accent color used around the Connect Arduino controls.
+    Values: rgba values create transparent panels, #151515 is the page background, and #d7b45f is the accent. */
   color-scheme: dark;
   --bg: #151515;
   --panel: rgba(18, 18, 18, 0.82);
@@ -45,6 +50,10 @@ button:focus-visible {
 }
 
 #app {
+  /* Lecturer QA: Website/local host layout answer.
+    The page is a two-row layout: the p5 canvas fills the available browser space and the HUD stays
+    underneath it. This is why the same local website can scale on different screens.
+    Values: 1fr gives the sketch the remaining height, auto keeps the HUD only as tall as its content. */
   display: grid;
   grid-template-rows: 1fr auto;
   height: 100%;
@@ -60,6 +69,10 @@ button:focus-visible {
 }
 
 #hud {
+  /* Lecturer QA: UI stuff answer.
+    The HUD is regular HTML/CSS UI for connecting Arduino and showing sensor values; it is separate
+    from the in-story UI images that p5 draws on the canvas.
+    Values: 10px/14px/12px padding gives the controls breathing room, and the top border separates HUD from canvas. */
   background: var(--panel);
   border-top: 1px solid var(--panel-border);
   padding: 10px 14px 12px;

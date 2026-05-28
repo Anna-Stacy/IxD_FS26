@@ -1,15 +1,63 @@
 "use strict";
 
+// Why: Keep asset-folder names centralized so file paths are not repeated throughout the sketch.
+// What this does for the code: Provides the base folder used by preload() when loading all visual assets.
+// Codependencies and why/where: Used only by preload(); depends on the repo folder `Bremen Image Material`.
+// Why these values: The value matches the exact folder name in this project.
 const ASSET_DIR = "Bremen Image Material";
+
+// Why: Keep music-folder names centralized for the same reason as visual assets.
+// What this does for the code: Provides the base folder used by preload() when loading all MP3 files.
+// Codependencies and why/where: Used only by preload(); depends on the repo folder `Bremen_Music_Files`.
+// Why these values: The value matches the exact folder name containing the project music.
 const MUSIC_DIR = "Bremen_Music_Files";
+
+// Why: The story should begin only when the physical light sensor is covered enough.
+// What this does for the code: Sets the analog threshold that moves from the light-sensor start page into the story.
+// Codependencies and why/where: Used in handleLightValue(); depends on Arduino serial `L:<0-1023>` values.
+// Why these values: 650 keeps the existing high-value covered-light behavior from testing.
 const LIGHT_START_THRESHOLD = 650;
+
+// Why: The tower mini-game should also require a deliberate light-sensor action to begin.
+// What this does for the code: Sets the analog threshold that moves from miniIntro into miniGame.
+// Codependencies and why/where: Used in handleLightValue(); depends on the same Arduino light sensor protocol.
+// Why these values: Kept equal to LIGHT_START_THRESHOLD so the same covered-light gesture works consistently.
 const MINI_GAME_LIGHT_THRESHOLD = 650;
+
+// Why: Browser serial and Arduino serial must agree on speed.
+// What this does for the code: Supplies the baud rate used when opening the Web Serial port.
+// Codependencies and why/where: Used by connectSerial(); must match `Serial.begin(9600)` in the Arduino sketch.
+// Why these values: 9600 is stable and matches the controller code already in this repo.
 const SERIAL_BAUD_RATE = 9600;
+
+// Why: Falling animals should only be caught near the current tower height.
+// What this does for the code: Limits the vertical catch region after a faller reaches the stack target.
+// Codependencies and why/where: Used in updateMiniGame(); works with stackTargetY() and MINI_GAME positions.
+// Why these values: 82 matches the visual vertical spacing used between stacked animals.
 const MINI_GAME_CATCH_WINDOW = 82;
+
+// Why: Button feedback should be visible but not carry into the next scene.
+// What this does for the code: Sets the brief duration for choice/continue button highlight effects.
+// Codependencies and why/where: Used by drawChoicePage(), handleContinueButton(), and drawUiButton().
+// Why these values: 220 ms is short enough to feel responsive while still visible.
 const BUTTON_FEEDBACK_MS = 220;
+
+// Why: Music should be audible without overpowering the story presentation.
+// What this does for the code: Sets the default gain for all looping tracks.
+// Codependencies and why/where: Used by updateMusic(); depends on p5.sound's setVolume() method.
+// Why these values: 0.45 is a moderate level suitable for classroom playback.
 const MUSIC_VOLUME = 0.45;
+
+// Why: Music transitions should feel ambient instead of abruptly switching.
+// What this does for the code: Sets the crossfade duration between background, tower, and ending tracks.
+// Codependencies and why/where: Used by updateMusic(); depends on p5.sound volume ramping.
+// Why these values: 1 second was requested for every fade in/out.
 const MUSIC_FADE_SECONDS = 1;
 
+// Why: Shared colors need readable names so UI drawing stays consistent.
+// What this does for the code: Stores text, panel, border, and accent colors used across draw functions.
+// Codependencies and why/where: Used by drawTextBox(), drawPanel(), drawMiniGame(), and start/minigame screens.
+// Why these values: They match the warm parchment/ink look of the project assets.
 const COLORS = {
   ink: "#2b1b10",
   paper: "#fff4db",
@@ -20,6 +68,10 @@ const COLORS = {
   accent: "#e8c86b",
 };
 
+// Why: Each image asset should have a stable key used by story logic instead of hard-coded filenames everywhere.
+// What this does for the code: Maps logical image names to the exact PNG filenames in `Bremen Image Material`.
+// Codependencies and why/where: Used by preload(), drawSceneImage(), story page objects, and UI draw helpers.
+// Why these values: Each value is the current filename in the repo; spaces/capitalization must match exactly on disk.
 const FILES = {
   mainStart: "main starting page.png",
   start: "starting page.png",
@@ -66,6 +118,10 @@ const FILES = {
   roosterBody: "rooster full body transparent background.png",
 };
 
+// Why: Each music phase needs a stable key just like the image assets.
+// What this does for the code: Maps logical music states to the exact MP3 filenames in `Bremen_Music_Files`.
+// Codependencies and why/where: Used by preload(), desiredMusicKey(), and updateMusic().
+// Why these values: They match the current imported MP3 files for background, tower, and endings.
 const MUSIC_FILES = {
   background: "IxD Bremen Town Musicians Background Music (1).mp3",
   tower: "IxD Bremen Town Musicians MiniGame (1).mp3",
@@ -74,31 +130,153 @@ const MUSIC_FILES = {
   bad: "IxD Bremen Town Musicians Bad Ending.mp3",
 };
 
+// Why: p5 preload() needs somewhere to store loaded image objects by key.
+// What this does for the code: Holds loaded p5.Image objects after preload().
+// Codependencies and why/where: Filled by preload(); read by drawSceneImage(), drawUiImage(), and animal drawing functions.
+// Why these values: Starts empty because p5 loads assets asynchronously during preload().
 const assets = {};
+
+// Why: p5 preload() needs somewhere to store loaded sound objects by key.
+// What this does for the code: Holds loaded p5.SoundFile objects after preload().
+// Codependencies and why/where: Filled by preload(); read by updateMusic() and stopAllMusic().
+// Why these values: Starts empty because sounds are available only after preload() runs.
 const music = {};
+
+// Why: The browser needs to remember which serial port is connected.
+// What this does for the code: Stores the Web Serial port object selected by the user.
+// Codependencies and why/where: Set by connectSerial(); used by readSerialLoop().
+// Why these values: Null means no port is connected yet.
 let serialPort = null;
+
+// Why: Serial reading requires a persistent stream reader.
+// What this does for the code: Stores the active reader for incoming Arduino text.
+// Codependencies and why/where: Set by readSerialLoop(); indirectly tied to serialPort.
+// Why these values: Null means no reader is active yet.
 let serialReader = null;
+
+// Why: Serial data can arrive in partial chunks.
+// What this does for the code: Buffers incomplete serial text until a newline appears.
+// Codependencies and why/where: Used by consumeSerialChunk() before parseSerialLine().
+// Why these values: Empty string means there is no partial serial line pending.
 let serialBuffer = "";
+
+// Why: The app needs to know whether the serial loop should keep reading.
+// What this does for the code: Tracks the current Arduino connection state.
+// Codependencies and why/where: Set by connectSerial() and readSerialLoop(); shown through updateHud()/status text.
+// Why these values: False is the safe startup state before the user connects hardware.
 let serialConnected = false;
+
+// Why: The start and mini-game gates depend on the latest light reading.
+// What this does for the code: Stores the most recent `L:<0-1023>` value from Arduino or keyboard simulation.
+// Codependencies and why/where: Updated by handleLightValue(); displayed by drawStart() and updateHud().
+// Why these values: Null means no reading has arrived yet, so the UI can show `--`.
 let lastLightValue = null;
+
+// Why: The tower mini-game needs a current horizontal control value.
+// What this does for the code: Stores the most recent slider/potentiometer value.
+// Codependencies and why/where: Updated by parseSerialLine() and keyPressed(); read by drawStackedDonkeyAndCompanions().
+// Why these values: 512 is the midpoint of the Arduino analog 0-1023 range.
 let lastSliderValue = 512;
 
+// Why: The story has multiple screens and interaction modes.
+// What this does for the code: Stores the active application state.
+// Codependencies and why/where: Read by draw(), handleContinueButton(), handleLightValue(), and input handlers.
+// Why these values: `mainStart` is the first user-facing screen after loading.
 let appState = "mainStart";
+
+// Why: The fixed story canvas must scale to the browser window.
+// What this does for the code: Stores the current scale and translation used in draw().
+// Codependencies and why/where: Updated by resizeCanvasToWrap(); applied by draw().
+// Why these values: Initial scale 1 and offsets 0 are safe before the first resize calculation.
 let canvasSize = { scale: 1, x: 0, y: 0 };
+
+// Why: The narrative is displayed as a list of page objects for the current branch.
+// What this does for the code: Holds the active sequence of story pages.
+// Codependencies and why/where: Filled by introPages(), branch choices, forestPages(), and buildPostMiniPages().
+// Why these values: Empty array means no story page sequence is active yet.
 let pages = [];
+
+// Why: The app needs to know which page in the active sequence is visible.
+// What this does for the code: Stores the current index into `pages`.
+// Codependencies and why/where: Used by drawNarrativePage(), continueStory(), and advanceAfterPages().
+// Why these values: 0 means the first page of any new sequence.
 let pageIndex = 0;
+
+// Why: Choice screens need the currently displayed choice definition.
+// What this does for the code: Stores the active choice object while appState is `choice` or `choiceFeedback`.
+// Codependencies and why/where: Set by showChoice(); read by drawChoicePage(), chooseOption(), and applyChoice().
+// Why these values: Null means no choice screen is currently active.
 let currentChoice = null;
+
+// Why: Choice buttons need a brief visual acknowledgement.
+// What this does for the code: Stores which choice was pressed and when the feedback started.
+// Codependencies and why/where: Set by chooseOption(); read by drawChoicePage().
+// Why these values: Null means no choice feedback animation is active.
 let choiceFeedback = null;
+
+// Why: Continue/retry buttons need a brief visual acknowledgement.
+// What this does for the code: Stores the time until which the red button highlight should remain active.
+// Codependencies and why/where: Set by handleContinueButton(); read by drawTextBox() and drawMiniResult().
+// Why these values: 0 means no highlight is active at startup.
 let continueFeedbackUntil = 0;
+
+// Why: Branches depend on which animals have joined the donkey.
+// What this does for the code: Tracks companion membership for dog, cat, and rooster.
+// Codependencies and why/where: Updated by applyChoice(); read by story builders, endings, and mini-game setup.
+// Why these values: All false means the donkey starts alone.
 let companions = { dog: false, cat: false, rooster: false };
+
+// Why: The ending path depends on the final companion set.
+// What this does for the code: Stores `good`, `neutral`, or `bad` after choices are complete.
+// Codependencies and why/where: Set by decideEnding(); read by forestPages() and buildPostMiniPages().
+// Why these values: Null means the ending has not been decided yet.
 let resultType = null;
+
+// Why: The tower game needs its own runtime state separate from story pages.
+// What this does for the code: Stores animals to catch, stack contents, faller state, and donkey position.
+// Codependencies and why/where: Created by startMiniGame(); read and updated by mini-game functions.
+// Why these values: Null means the mini-game is not active.
 let miniGame = null;
+
+// Why: The transition after the mini-game uses a timed fade screen.
+// What this does for the code: Stores fade timing and image while appState is `fade`.
+// Codependencies and why/where: Set by performContinueAction(); read by drawFade().
+// Why these values: Null means no fade transition is active.
 let fade = null;
+
+// Why: Browsers require user interaction before audio can start.
+// What this does for the code: Tracks whether userStartAudio() has been triggered.
+// Codependencies and why/where: Set by beginAudio(); read by updateMusic().
+// Why these values: False prevents music from starting on the main start screen automatically.
 let audioStarted = false;
+
+// Why: The app needs to avoid restarting the same music loop every frame.
+// What this does for the code: Stores the currently active music key.
+// Codependencies and why/where: Updated by updateMusic(); reset by stopAllMusic().
+// Why these values: Null means no track is currently considered active.
 let currentMusicKey = null;
+
+// Why: Continue button feedback delays navigation briefly.
+// What this does for the code: Stores the timeout that will run the actual continue action.
+// Codependencies and why/where: Set by handleContinueButton(); cleared by resetStoryState().
+// Why these values: Null means no delayed continue action is pending.
 let pendingContinue = null;
+
+// Why: Music fade-out needs a delayed stop after volume reaches zero.
+// What this does for the code: Stores the timeout that stops previous tracks after crossfade.
+// Codependencies and why/where: Set by updateMusic(); cleared by updateMusic() and stopAllMusic().
+// Why these values: Null means no delayed music stop is pending.
 let musicStopTimer = null;
 
+// Lecturer QA: How the sketch/visuals are made in code.
+// The visuals are PNG and MP3 assets loaded into two lookup objects, `assets` and `music`.
+// Later, story pages only refer to short keys like "dogGood" or "bad", and preload() translates those
+// keys into actual files from Bremen Image Material and Bremen_Music_Files.
+// Values: ASSET_DIR, MUSIC_DIR, FILES, and MUSIC_FILES above are the source of the filenames.
+// Why: p5 needs all media loaded before setup() and draw() try to use it.
+// What this does for the code: Loads all images and sounds into the `assets` and `music` lookup objects.
+// Codependencies and why/where: Depends on FILES, MUSIC_FILES, ASSET_DIR, MUSIC_DIR, p5 loadImage(), and p5.sound loadSound().
+// Why these values: Uses the exact keys and filenames defined above so story pages can reference stable logical names.
 function preload() {
   Object.entries(FILES).forEach(([key, filename]) => {
     assets[key] = loadImage(`${ASSET_DIR}/${filename}`);
@@ -110,6 +288,14 @@ function preload() {
   }
 }
 
+// Lecturer QA: How the website/local host becomes the interactive sketch.
+// index.html loads p5.js and sketch.js; then p5 automatically calls setup() when the page opens on localhost.
+// setup() creates the canvas inside #canvas-wrap and connects the HTML buttons to JavaScript functions.
+// Values: createCanvas(1376, 768) matches the designed artwork size, and frameRate(60) gives smooth animation.
+// Why: p5 needs a setup step to create the canvas and bind browser UI controls.
+// What this does for the code: Creates the canvas, applies font/frame settings, connects button listeners, and initializes HUD text.
+// Codependencies and why/where: Depends on p5 createCanvas(), `canvas-wrap`, `connect-serial`, `demo-start`, startStory(), and updateHud().
+// Why these values: Canvas size 1376x768 matches the designed scene asset resolution and game coordinate system.
 function setup() {
   const canvas = createCanvas(1376, 768);
   canvas.parent("canvas-wrap");
@@ -125,6 +311,10 @@ function setup() {
   updateHud();
 }
 
+// Why: p5 redraws the application continuously, so all screen rendering is routed from one state switch.
+// What this does for the code: Clears the background, applies responsive canvas scaling, draws the active app state, and updates music.
+// Codependencies and why/where: Depends on appState and all draw* functions; updateMusic() keeps audio synchronized with visible story state.
+// Why these values: Background 16 provides a dark margin outside the scaled story canvas.
 function draw() {
   background(16);
   push();
@@ -145,10 +335,18 @@ function draw() {
   pop();
 }
 
+// Why: The app should remain correctly scaled after the browser window changes size.
+// What this does for the code: Delegates resize events to resizeCanvasToWrap().
+// Codependencies and why/where: Called automatically by p5; depends on resizeCanvasToWrap().
+// Why these values: No literal values here; it exists as the p5 resize hook.
 function windowResized() {
   resizeCanvasToWrap();
 }
 
+// Why: The story was designed at 1376x768 but may run in different browser sizes.
+// What this does for the code: Resizes the p5 canvas to its wrapper and calculates scale/offset for letterboxed drawing.
+// Codependencies and why/where: Uses `canvas-wrap`, p5 width/height, resizeCanvas(), and draw() transform logic.
+// Why these values: Minimum 320 prevents invalid tiny canvases; 1376x768 matches the designed scene resolution.
 function resizeCanvasToWrap() {
   const wrap = document.getElementById("canvas-wrap");
   const w = Math.max(320, wrap.clientWidth);
@@ -162,6 +360,14 @@ function resizeCanvasToWrap() {
   };
 }
 
+// Lecturer QA: How the scene visuals are drawn.
+// Every story scene calls this function with an asset key. The function scales the image so it fits the
+// 1376x768 design canvas, centers it, and optionally draws a transparent black overlay for readability.
+// Values: 1376x768 is the fixed design coordinate system; overlay values like 42, 46, or 52 control darkness.
+// Why: Every narrative page needs consistent full-scene image rendering.
+// What this does for the code: Draws an image contained within the canvas and optionally darkens it with an overlay.
+// Codependencies and why/where: Depends on loaded `assets`; used by all major screen draw functions.
+// Why these values: Default overlay 52 preserves image visibility while improving text readability.
 function drawSceneImage(assetKey, overlay = 52) {
   const img = assets[assetKey] || assets.road;
   const scale = Math.min(1376 / img.width, 768 / img.height);
@@ -180,6 +386,10 @@ function drawSceneImage(assetKey, overlay = 52) {
   }
 }
 
+// Why: The first screen is a designed landing page separate from the light-sensor start page.
+// What this does for the code: Draws the main start PNG and overlays only the red continue UI.
+// Codependencies and why/where: Depends on `mainStart` image key, drawUiButton(), and continueFeedbackUntil.
+// Why these values: Red button coordinates place it in the lower-middle area requested for the main page.
 function drawMainStart() {
   drawSceneImage("mainStart", 0);
   textAlign(CENTER, CENTER);
@@ -187,6 +397,10 @@ function drawMainStart() {
   textAlign(LEFT, BASELINE);
 }
 
+// Why: The second start page waits for the physical light sensor before the story begins.
+// What this does for the code: Draws the light-sensor start image and overlays the live light value.
+// Codependencies and why/where: Depends on `start` image key and lastLightValue; handleLightValue() performs the threshold transition.
+// Why these values: Text coordinates place the light value in the lower-right middle area of the designed page.
 function drawStart() {
   drawSceneImage("start", 0);
   textAlign(CENTER, CENTER);
@@ -197,12 +411,20 @@ function drawStart() {
   textAlign(LEFT, BASELINE);
 }
 
+// Why: Narrative pages share image-and-textbox rendering.
+// What this does for the code: Draws the current page image and story text with the red continue icon.
+// Codependencies and why/where: Depends on pages, pageIndex, drawSceneImage(), drawTextBox(), and page() objects.
+// Why these values: Overlay fallback 46 is a balanced darkness level for readable story text.
 function drawNarrativePage() {
   const page = pages[pageIndex];
   drawSceneImage(page.image, page.overlay ?? 46);
   drawTextBox(page.text, "red-icon-only", page.position || "left");
 }
 
+// Why: Choice pages need to display the question, three options, and short button feedback.
+// What this does for the code: Draws the active choice scene, question box, option cards, and applies selected-choice timing.
+// Codependencies and why/where: Depends on currentChoice, choiceFeedback, BUTTON_FEEDBACK_MS, choiceCardBox(), drawChoiceCard(), and applyChoice().
+// Why these values: Uses three fixed option card positions so the UI layout stays predictable.
 function drawChoicePage() {
   drawSceneImage(currentChoice.image, currentChoice.overlay ?? 42);
   drawTextBox(currentChoice.question, "Choose with green, yellow, or white.", "top");
@@ -216,6 +438,10 @@ function drawChoicePage() {
   }
 }
 
+// Why: The tower game needs an instruction page before the light sensor starts gameplay.
+// What this does for the code: Draws the house scene and explains the light-sensor trigger for the mini-game.
+// Codependencies and why/where: Depends on drawTextBox(), lightUi asset, and MINI_GAME_LIGHT_THRESHOLD.
+// Why these values: Light UI position keeps the control hint visible without covering the main text box.
 function drawMiniIntro() {
   drawSceneImage("lookingInside", 50);
   drawTextBox(
@@ -226,6 +452,10 @@ function drawMiniIntro() {
   drawUiImage("lightUi", 1110, 66, 150, 108);
 }
 
+// Why: The mini-game needs continuous animation and input-driven drawing.
+// What this does for the code: Updates falling animals, draws the game instruction panel, slider UI, donkey stack, and active faller.
+// Codependencies and why/where: Depends on miniGame state, updateMiniGame(), drawStackedDonkeyAndCompanions(), animalWidth(), and animalHeight().
+// Why these values: Panel and slider coordinates keep controls readable while leaving the falling area visible.
 function drawMiniGame() {
   drawSceneImage("lookingInside", 34);
   updateMiniGame();
@@ -249,6 +479,10 @@ function drawMiniGame() {
   imageMode(CORNER);
 }
 
+// Why: Players need clear feedback after the tower mini-game ends.
+// What this does for the code: Shows either a success continue state or retry state, depending on whether any animal was caught.
+// Codependencies and why/where: Depends on miniGame.stack, drawStackedDonkeyAndCompanions(), drawUiButton(), and continueFeedbackUntil.
+// Why these values: Result box and button positions place feedback near the top center without hiding the tower.
 function drawMiniResult() {
   drawSceneImage("lookingInside", 38);
   imageMode(CENTER);
@@ -275,6 +509,10 @@ function drawMiniResult() {
   textAlign(LEFT, BASELINE);
 }
 
+// Why: After the mini-game, the story transitions through a short dramatic fade.
+// What this does for the code: Draws the fade image, animates black opacity, then builds post-mini story pages.
+// Codependencies and why/where: Depends on fade state, millis(), buildPostMiniPages(), and appState transitions.
+// Why these values: 500 ms fade in plus 500 ms fade out creates a 1 second transition.
 function drawFade() {
   drawSceneImage(fade.image, 44);
   const elapsed = millis() - fade.startedAt;
@@ -289,6 +527,14 @@ function drawFade() {
   }
 }
 
+// Lecturer QA: UI stuff, text box answer.
+// The text boxes are not normal HTML boxes; they are drawn inside the p5 canvas. This function draws the
+// text-box image, wraps the story sentence, centers it vertically, and adds the red continue button image.
+// Values: buttonSize 56, padding from layoutTextBox(), and continueFeedbackUntil create the visible button cue.
+// Why: Story text needs consistent layout across different scene images and sentence lengths.
+// What this does for the code: Draws the text-box UI, centers/wraps story text, and places the red continue icon partly outside the box.
+// Codependencies and why/where: Depends on layoutTextBox(), drawTextBoxUi(), drawUiButton(), COLORS, and continueFeedbackUntil.
+// Why these values: Padding and icon placement are inherited from layoutTextBox() and were tuned for the custom text-box image.
 function drawTextBox(body, footer, position) {
   const box = layoutTextBox(body, footer, position);
   drawTextBoxUi(box.x, box.y, box.w, box.h);
@@ -314,6 +560,10 @@ function drawTextBox(body, footer, position) {
   textAlign(LEFT, BASELINE);
 }
 
+// Why: Text boxes need different base layouts depending on screen position.
+// What this does for the code: Returns initial x/y/width/height/font/padding values for top, right, bottom, or left boxes.
+// Codependencies and why/where: Used by layoutTextBox(); affects drawTextBox() on every narrative and question screen.
+// Why these values: Coordinates and minimum sizes were tuned to avoid the decorative leaves and keep text readable.
 function getTextBox(position) {
   if (position === "top") return { x: 74, y: 74, w: 1228, h: 178, minW: 660, minH: 126, fontSize: 21, leading: 28, padX: 42, padY: 34 };
   if (position === "right") return { x: 716, y: 112, w: 586, h: 394, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
@@ -321,6 +571,10 @@ function getTextBox(position) {
   return { x: 74, y: 112, w: 610, h: 420, minW: 430, minH: 158, fontSize: 21, leading: 29, padX: 38, padY: 36 };
 }
 
+// Why: Short sentences should not use oversized text boxes, while long sentences still need enough room.
+// What this does for the code: Shrinks text-box width for shorter copy, recenters/right-aligns boxes as needed, and fits text metrics.
+// Codependencies and why/where: Depends on getTextBox(), p5 map()/constrain(), shouldShowTextBoxFooter(), and fitTextToBox().
+// Why these values: 220 characters is the cutoff where shrinking stops; 0.68 is the smallest proportional width used.
 function layoutTextBox(body, footer, position) {
   const base = getTextBox(position);
   const bodyLength = body.length;
@@ -341,6 +595,10 @@ function layoutTextBox(body, footer, position) {
   return box;
 }
 
+// Why: p5 text rendering can clip final words if the box is too tight.
+// What this does for the code: Calculates wrapped line count, reduces font size when needed, and adds vertical safety space.
+// Codependencies and why/where: Depends on wrapTextLines(), textSize(), textLeading(), and textWidth().
+// Why these values: Minimum font size 17 remains readable; bodySafety 18 prevents bottom-line clipping.
 function fitTextToBox(body, box, footer) {
   const footerH = 0;
   const footerGap = 0;
@@ -367,10 +625,18 @@ function fitTextToBox(body, box, footer) {
   box.footerY = box.y + box.h - box.padY - footerH + 3;
 }
 
+// Why: Only red continue footers should draw the red control icon.
+// What this does for the code: Detects whether footer text represents a red continue control.
+// Codependencies and why/where: Used by layoutTextBox() and drawTextBox().
+// Why these values: Checks for the word `red` because current continue footer values are `red-icon-only` or red instructions.
 function shouldShowTextBoxFooter(footer) {
   return Boolean(footer && footer.toLowerCase().includes("red"));
 }
 
+// Why: Text height calculation needs to mirror p5's wrapping behavior.
+// What this does for the code: Splits text into lines that fit a given pixel width.
+// Codependencies and why/where: Used by fitTextToBox() and drawChoiceCard(); depends on p5 textWidth().
+// Why these values: Splits on whitespace so sentence words remain intact.
 function wrapTextLines(value, maxWidth) {
   const lines = [];
   const paragraphs = value.split("\n");
@@ -390,6 +656,10 @@ function wrapTextLines(value, maxWidth) {
   return lines.length ? lines : [""];
 }
 
+// Why: Some UI panels need a simple fallback if image-based UI is not available.
+// What this does for the code: Draws a rounded rectangle with fill and border.
+// Codependencies and why/where: Used by drawTextBoxUi() fallback and mini-game panel-style needs.
+// Why these values: Radius 8 matches the rest of the project UI, and border color comes from COLORS.
 function drawPanel(x, y, w, h, colorValue) {
   noStroke();
   fill(colorValue);
@@ -400,6 +670,10 @@ function drawPanel(x, y, w, h, colorValue) {
   noStroke();
 }
 
+// Why: The story uses a custom text-box image instead of plain rectangles.
+// What this does for the code: Draws the text-box PNG with transparency, or falls back to drawPanel().
+// Codependencies and why/where: Depends on assets.textBox; used by story boxes, choice cards, and mini-game result boxes.
+// Why these values: Tint alpha 224 preserves the designed transparency while keeping text readable.
 function drawTextBoxUi(x, y, w, h) {
   if (assets.textBox) {
     push();
@@ -412,6 +686,14 @@ function drawTextBoxUi(x, y, w, h) {
   }
 }
 
+// Lecturer QA: UI stuff, choice layout answer.
+// The three choices are positioned manually because they are part of the story composition, not generic web buttons.
+// Choice 1 appears left with the green button, choice 2 in the middle with yellow, and choice 3 right with white.
+// Values: x/y/w/h below are canvas coordinates in the 1376x768 scene coordinate system.
+// Why: Choice cards need fixed positions that do not cover too much scene art.
+// What this does for the code: Returns the x/y/width/height for each of the three choice option boxes.
+// Codependencies and why/where: Used by drawChoicePage(); index order must match chooseOption() option order.
+// Why these values: Positions keep choice 1 left, choice 2 middle, choice 3 right, with smaller boxes to reveal visuals.
 function choiceCardBox(index) {
   const positions = [
     { x: 74, y: 514, w: 354, h: 192 },
@@ -421,6 +703,10 @@ function choiceCardBox(index) {
   return positions[index];
 }
 
+// Why: Each choice option needs a consistent card with a colored physical-button cue.
+// What this does for the code: Draws the choice text-box image, centered button icon, wrapped option text, and selected-button highlight.
+// Codependencies and why/where: Depends on drawTextBoxUi(), drawUiButton(), wrapTextLines(), and choice index mapping.
+// Why these values: 60 px button icons and 13 px text keep cards compact enough for the dog scene.
 function drawChoiceCard(x, y, w, h, option, index, isSelected) {
   drawTextBoxUi(x, y, w, h);
   const uiKey = index === 0 ? "greenChoice2" : index === 1 ? "yellowChoice1" : "whiteChoice3";
@@ -450,10 +736,22 @@ function drawChoiceCard(x, y, w, h, option, index, isSelected) {
   textAlign(LEFT, BASELINE);
 }
 
+// Why: Image drawing should use loaded asset keys consistently.
+// What this does for the code: Draws one loaded image at a supplied position and size.
+// Codependencies and why/where: Depends on `assets`; used by UI and animal draw helpers.
+// Why these values: Values are passed by callers because each screen needs different placement.
 function drawUiImage(key, x, y, w, h) {
   image(assets[key], x, y, w, h);
 }
 
+// Lecturer QA: UI stuff, button feedback answer.
+// The colored buttons are PNG images. When pressed, the code draws the same image and adds a short white
+// transparent rectangle over only that button, which creates the visual "pressed" feedback.
+// Values: fill alpha 58 and radius 8 make the feedback subtle; BUTTON_FEEDBACK_MS controls how long it lasts.
+// Why: Buttons need an optional visual feedback state without changing the underlying image asset.
+// What this does for the code: Draws a UI button image and overlays a white translucent highlight when active.
+// Codependencies and why/where: Depends on drawUiImage(); used for red continue/retry and choice buttons.
+// Why these values: White alpha 58 gives subtle feedback without obscuring the button color.
 function drawUiButton(key, x, y, w, h, isActive = false) {
   drawUiImage(key, x, y, w, h);
   if (isActive) {
@@ -463,6 +761,10 @@ function drawUiButton(key, x, y, w, h, isActive = false) {
   }
 }
 
+// Why: Browser audio cannot start until a user interaction occurs.
+// What this does for the code: Starts the p5 audio context once and then asks updateMusic() to choose the right loop.
+// Codependencies and why/where: Depends on p5.sound userStartAudio(); called from user input paths.
+// Why these values: The boolean guard prevents repeated audio-start attempts.
 function beginAudio() {
   if (audioStarted) return;
   audioStarted = true;
@@ -470,6 +772,10 @@ function beginAudio() {
   updateMusic();
 }
 
+// Why: The music must match story phase without abrupt changes.
+// What this does for the code: Chooses the desired track, crossfades away from old tracks, loops the new track, and stores state.
+// Codependencies and why/where: Depends on desiredMusicKey(), music objects, MUSIC_VOLUME, and MUSIC_FADE_SECONDS.
+// Why these values: 1 second fade and 0.45 volume come from top-level constants requested/tuned for ambience.
 function updateMusic() {
   if (!audioStarted) return;
   const desiredKey = desiredMusicKey();
@@ -507,6 +813,10 @@ function updateMusic() {
   currentMusicKey = desiredKey;
 }
 
+// Why: Returning to the main start screen should silence the game.
+// What this does for the code: Cancels pending music stop timers, stops all tracks, and resets audio state.
+// Codependencies and why/where: Used by resetStoryState(); depends on p5.sound isPlaying()/stop().
+// Why these values: Resets to null/false so no music plays on the main starting page.
 function stopAllMusic() {
   if (musicStopTimer) {
     clearTimeout(musicStopTimer);
@@ -519,12 +829,20 @@ function stopAllMusic() {
   audioStarted = false;
 }
 
+// Why: Music selection should be centralized instead of repeated in draw/update functions.
+// What this does for the code: Returns the current desired music key based on ending/tower/background phase.
+// Codependencies and why/where: Used by updateMusic(); depends on towerMusicKeyForCurrentPage() and endingMusicKeyForCurrentPage().
+// Why these values: Background is the safe fallback for all non-ending story states.
 function desiredMusicKey() {
   if (appState === "fade" && fade?.image === "crash") return "tower";
   if (towerMusicKeyForCurrentPage()) return "tower";
   return endingMusicKeyForCurrentPage() || "background";
 }
 
+// Why: The new tower music should play through the robber-house scare sequence.
+// What this does for the code: Detects page images that belong to the post-tower scare phase.
+// Codependencies and why/where: Used by desiredMusicKey(); depends on appState, pages, and page image keys.
+// Why these values: The image key list matches the crash/feast/dark/robber sequence in buildPostMiniPages().
 function towerMusicKeyForCurrentPage() {
   if (appState !== "page") return null;
   const currentPage = pages[pageIndex];
@@ -533,6 +851,10 @@ function towerMusicKeyForCurrentPage() {
   return towerImages.includes(currentPage.image) ? "tower" : null;
 }
 
+// Why: Ending music should begin only when an ending is actually visible.
+// What this does for the code: Maps current ending image keys to good, neutral, or bad music.
+// Codependencies and why/where: Used by desiredMusicKey(); depends on page image keys from ending page builders.
+// Why these values: Good uses goodAnimals/goodFinal, bad uses bad, and neutral uses neutral-prefixed image keys.
 function endingMusicKeyForCurrentPage() {
   if (appState !== "page") return null;
   const currentPage = pages[pageIndex];
@@ -543,6 +865,10 @@ function endingMusicKeyForCurrentPage() {
   return null;
 }
 
+// Why: The mini-game needs to show the tower being built from the player's catches.
+// What this does for the code: Draws the donkey at the slider position and draws each caught companion stacked above him.
+// Codependencies and why/where: Used by drawMiniGame(); depends on lastSliderValue, miniGame.stack, body assets, animalWidth(), and animalHeight().
+// Why these values: X range 196-1180 keeps the donkey on screen, baseY 640 anchors him near the ground, and 82 px spacing matches the catch window.
 function drawStackedDonkeyAndCompanions() {
   const donkeyX = map(lastSliderValue, 0, 1023, 196, 1180);
   const baseY = 640;
@@ -555,18 +881,30 @@ function drawStackedDonkeyAndCompanions() {
   });
 }
 
+// Why: Each animal body image has a different natural shape.
+// What this does for the code: Returns the display width for a stacked companion image.
+// Codependencies and why/where: Used by drawStackedDonkeyAndCompanions() and updateMiniGame() visual alignment.
+// Why these values: Dog 230, cat 220, and rooster 210 are tuned to look proportional on the donkey's back.
 function animalWidth(kind) {
   if (kind === "dog") return 230;
   if (kind === "cat") return 220;
   return 210;
 }
 
+// Why: Width alone is not enough because each animal sprite has a different aspect feel.
+// What this does for the code: Returns the display height for a stacked companion image.
+// Codependencies and why/where: Used by drawStackedDonkeyAndCompanions() with animalWidth().
+// Why these values: Heights 128, 122, and 118 keep the animals visually stacked without covering too much of the scene.
 function animalHeight(kind) {
   if (kind === "dog") return 128;
   if (kind === "cat") return 122;
   return 118;
 }
 
+// Why: The story needs a single entry point after the light-sensor start screen.
+// What this does for the code: Starts audio, resets branch state without stopping audio, loads intro pages, and enters page mode.
+// Codependencies and why/where: Called by handleLightValue(); depends on beginAudio(), resetStoryState(), and introPages().
+// Why these values: Page index starts at 0 because arrays are zero-based and the first intro page should show first.
 function startStory() {
   beginAudio();
   resetStoryState(false);
@@ -575,6 +913,10 @@ function startStory() {
   appState = "page";
 }
 
+// Why: Endings and manual resets must return the app to the same clean starting state.
+// What this does for the code: Clears pending button actions, resets pages, choices, companions, result, mini-game, and fade state.
+// Codependencies and why/where: Called by startStory(), advanceAfterPages(), and end transitions; optionally depends on stopAllMusic().
+// Why these values: The default stopAudio true silences endings when returning to the main start page, while startStory(false) preserves startup music.
 function resetStoryState(stopAudio = true) {
   if (pendingContinue) {
     clearTimeout(pendingContinue);
@@ -592,6 +934,10 @@ function resetStoryState(stopAudio = true) {
   fade = null;
 }
 
+// Why: Red continue input should advance only narrative pages.
+// What this does for the code: Moves to the next page or hands off to advanceAfterPages() when the current page sequence is finished.
+// Codependencies and why/where: Called by performContinueAction(); depends on appState, pages, pageIndex, and advanceAfterPages().
+// Why these values: It ignores mainStart/start/fade so the red button cannot skip sensor gates or fade timing.
 function continueStory() {
   if (appState === "mainStart" || appState === "start") return;
   if (appState === "page") {
@@ -605,6 +951,10 @@ function continueStory() {
   }
 }
 
+// Why: The story has multiple page sequences that branch into choices, mini-games, endings, or reset.
+// What this does for the code: Reads the current sequence's `next` marker and switches to the correct next state or page set.
+// Codependencies and why/where: Called by continueStory(); depends on page().next values created by story-builder functions.
+// Why these values: Marker strings such as dogChoice, catIntro, forest, miniIntro, and end are explicit route names for this story.
 function advanceAfterPages() {
   const last = pages[pages.length - 1];
   if (!last || !last.next) {
@@ -634,12 +984,20 @@ function advanceAfterPages() {
   }
 }
 
+// Why: Choice screens need the selected choice data stored before drawing and input can work.
+// What this does for the code: Saves the choice object, clears old feedback, and enters choice mode.
+// Codependencies and why/where: Called by advanceAfterPages(); used by drawChoicePage() and chooseOption().
+// Why these values: Null feedback prevents an old button highlight from appearing on a new choice screen.
 function showChoice(choice) {
   currentChoice = choice;
   choiceFeedback = null;
   appState = "choice";
 }
 
+// Why: Physical and keyboard choice inputs need one shared path.
+// What this does for the code: Starts audio if needed, validates the option, records feedback timing, and enters temporary feedback mode.
+// Codependencies and why/where: Called by parseSerialLine() and keyPressed(); depends on currentChoice and BUTTON_FEEDBACK_MS through drawChoicePage().
+// Why these values: Option index is zero-based because currentChoice.options is an array.
 function chooseOption(index) {
   if (appState !== "choice") return;
   beginAudio();
@@ -649,6 +1007,10 @@ function chooseOption(index) {
   appState = "choiceFeedback";
 }
 
+// Why: After the brief visual cue, the chosen branch must update story state.
+// What this does for the code: Marks joined companions, loads the chosen option's pages, and returns to narrative page mode.
+// Codependencies and why/where: Called by drawChoicePage() after feedback timing; depends on currentChoice option shape.
+// Why these values: Page index resets to 0 so the selected branch starts at its first page.
 function applyChoice(index) {
   const option = currentChoice.options[index];
   if (option.joins) companions[option.joins] = true;
@@ -659,16 +1021,28 @@ function applyChoice(index) {
   appState = "page";
 }
 
+// Why: The ending depends on how complete the animal band became.
+// What this does for the code: Sets resultType to good, neutral, or bad based on joined companion flags.
+// Codependencies and why/where: Called before forestPages(); used by forestPages(), badEndingPages(), buildPostMiniPages(), and music routing.
+// Why these values: All three companions means good, at least one companion means neutral, and none means bad.
 function decideEnding() {
   if (companions.dog && companions.cat && companions.rooster) resultType = "good";
   else if (joinedCompanions().length > 0) resultType = "neutral";
   else resultType = "bad";
 }
 
+// Why: Many branch texts and images need the same list of animals who joined.
+// What this does for the code: Returns companion animal keys whose boolean state is true.
+// Codependencies and why/where: Used by story text builders, ending logic, and mini-game setup.
+// Why these values: The order dog, cat, rooster matches the order they appear in the story and mini-game.
 function joinedCompanions() {
   return ["dog", "cat", "rooster"].filter((animal) => companions[animal]);
 }
 
+// Why: Dynamic story text must read naturally for one, two, or three animals.
+// What this does for the code: Converts animal keys into an English list such as "the donkey and the dog".
+// Codependencies and why/where: Used by travelerLabel(); depends on animal key strings from travelerAnimals().
+// Why these values: Adds "the" before each animal and uses an Oxford comma for three-item readability.
 function formatAnimalList(animals) {
   const names = animals.map((animal) => `the ${animal}`);
   if (names.length === 1) return names[0];
@@ -676,6 +1050,10 @@ function formatAnimalList(animals) {
   return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
+// Why: Some scenes need to describe the current group, sometimes including an animal who just joined.
+// What this does for the code: Builds a unique list starting with donkey, followed by joined companions and optional extra animals.
+// Codependencies and why/where: Used by travelerLabel() and travelerPronoun(); depends on joinedCompanions().
+// Why these values: Donkey always appears first because he is the main traveler and is present in every branch.
 function travelerAnimals(extraAnimals = []) {
   const animals = ["donkey", ...joinedCompanions()];
   extraAnimals.forEach((animal) => {
@@ -684,24 +1062,44 @@ function travelerAnimals(extraAnimals = []) {
   return animals;
 }
 
+// Why: Story sentences should not repeat list-building logic.
+// What this does for the code: Returns the formatted label for the current traveling group.
+// Codependencies and why/where: Used by roosterIntroPages(), roosterChoice(), and forestPages().
+// Why these values: No literal layout values here; it delegates formatting to travelerAnimals() and formatAnimalList().
 function travelerLabel(extraAnimals = []) {
   return formatAnimalList(travelerAnimals(extraAnimals));
 }
 
+// Why: Dynamic labels sometimes begin a sentence and need a capital first letter.
+// What this does for the code: Uppercases the first character while preserving the rest of the string.
+// Codependencies and why/where: Used by roosterIntroPages() and roosterChoice() for generated sentences.
+// Why these values: Character 0 is the sentence's first character; slice(1) keeps the remaining text unchanged.
 function capitalizeSentence(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+// Why: Branch text needs singular/plural grammar based on who is traveling.
+// What this does for the code: Returns "he" for donkey alone and "they" for groups.
+// Codependencies and why/where: Used by roosterIntroPages(); depends on travelerAnimals().
+// Why these values: One traveler is singular, more than one traveler is plural.
 function travelerPronoun(extraAnimals = []) {
   return travelerAnimals(extraAnimals).length === 1 ? "he" : "they";
 }
 
+// Why: Neutral forest text needs to mention companions only when they exist.
+// What this does for the code: Returns an empty string, singular companion phrase, or plural companion phrase.
+// Codependencies and why/where: Used by forestPages(); depends on joinedCompanions().
+// Why these values: Count 0, 1, and more-than-1 are the only grammar cases needed here.
 function companionPhrase() {
   const count = joinedCompanions().length;
   if (count === 0) return "";
   return count === 1 ? "his companion" : "his companions";
 }
 
+// Why: The first narrative sequence should be kept in one readable builder.
+// What this does for the code: Returns the intro page array up to the first dog choice.
+// Codependencies and why/where: Called by startStory(); depends on page() and image keys from FILES.
+// Why these values: Text and image keys follow the project story order and route to dogChoice at the final intro page.
 function introPages() {
   return [
     page("intro", "A man had a donkey, who for long years had untiringly carried sacks to the mill, but whose strength was now failing, so that he was becoming less and less able to work.", "left"),
@@ -711,6 +1109,10 @@ function introPages() {
   ];
 }
 
+// Why: The dog meeting has three player options with different narrative consequences.
+// What this does for the code: Builds the dog choice object, including option text, joining behavior, and branch pages.
+// Codependencies and why/where: Called by advanceAfterPages(); used by drawChoicePage(), chooseOption(), and applyChoice().
+// Why these values: Choice 1 and 2 set joins dog, while choice 3 leaves the dog behind and uses the bad dog image.
 function dogChoice() {
   return {
     image: "dogGood",
@@ -746,6 +1148,10 @@ function dogChoice() {
   };
 }
 
+// Why: The cat introduction image and wording depend on whether the dog is already traveling with the donkey.
+// What this does for the code: Returns the cat intro pages with donkey-only or donkey-and-dog wording.
+// Codependencies and why/where: Called by advanceAfterPages(); depends on companions.dog and page().
+// Why these values: Sad cat images are used before any cat choice, and the final page routes to catChoice.
 function catIntroPages() {
   const withDog = companions.dog;
   const text = withDog
@@ -757,6 +1163,10 @@ function catIntroPages() {
   ];
 }
 
+// Why: The cat choice has branch text that must match whether the dog is present.
+// What this does for the code: Builds the cat choice object with dynamic pronouns, images, and follow-up pages.
+// Codependencies and why/where: Called by advanceAfterPages(); depends on companions.dog, page(), and applyChoice().
+// Why these values: Only choice 1 sets joins cat and switches to the happy cat image after the good choice.
 function catChoice() {
   const withDog = companions.dog;
   const usOrMe = withDog ? "us" : "me";
@@ -804,6 +1214,10 @@ function catChoice() {
   };
 }
 
+// Why: The rooster introduction must match every possible group composition.
+// What this does for the code: Builds the rooster intro pages using dynamic traveler labels and the correct rooster image.
+// Codependencies and why/where: Called by advanceAfterPages(); depends on roosterImage(), travelerLabel(), travelerPronoun(), and page().
+// Why these values: Donkey-alone text is separate because "they were tired" would be incorrect for one animal.
 function roosterIntroPages() {
   const image = roosterImage();
   const travelers = travelerLabel();
@@ -818,6 +1232,10 @@ function roosterIntroPages() {
   ];
 }
 
+// Why: The rooster meeting has three choices and must respect previous companions.
+// What this does for the code: Builds the rooster choice object with dynamic invitation text and branch pages.
+// Codependencies and why/where: Called by advanceAfterPages(); depends on joinedCompanions(), roosterImage(), travelerLabel(), and page().
+// Why these values: Choice 1 and 2 set joins rooster; choice 3 leaves the rooster behind and still routes to forest.
 function roosterChoice() {
   const partyIntro = joinedCompanions().length === 0
     ? "I am headed off to the city to become a musician"
@@ -855,6 +1273,10 @@ function roosterChoice() {
   };
 }
 
+// Why: Rooster scenes need to show the correct group of animals on screen.
+// What this does for the code: Selects the rooster image key based on which companions have joined.
+// Codependencies and why/where: Used by roosterIntroPages() and roosterChoice(); depends on companions dog/cat state.
+// Why these values: The image keys match the available asset combinations for donkey, dog, cat, and rooster.
 function roosterImage(afterJoin = false) {
   const dog = companions.dog;
   const cat = companions.cat;
@@ -865,6 +1287,10 @@ function roosterImage(afterJoin = false) {
   return "roosterDonkey";
 }
 
+// Why: The forest and robber-house setup changes depending on the eventual ending type.
+// What this does for the code: Returns the correct forest sequence for bad, good, or neutral branches.
+// Codependencies and why/where: Called by advanceAfterPages(); depends on resultType, traveler helpers, and page().
+// Why these values: Bad routes directly to badEnding, good uses the full original band plan, and neutral uses dynamic smaller-group wording.
 function forestPages() {
   if (resultType === "bad") {
     return [
@@ -904,6 +1330,10 @@ function forestPages() {
   ];
 }
 
+// Why: If no animals joined, the donkey cannot believably scare the robbers alone.
+// What this does for the code: Returns the lonely bad-ending page sequence and then routes back to the start.
+// Codependencies and why/where: Called by advanceAfterPages() after the bad forest page; depends on page() and bad image keys.
+// Why these values: The sequence keeps the house glimpse but removes group actions that would not make sense.
 function badEndingPages() {
   return [
     page("lookingInside", "Before falling asleep he looked around once again in all four directions, and he thought that he saw a little spark burning in the distance.", "left"),
@@ -913,6 +1343,10 @@ function badEndingPages() {
   ];
 }
 
+// Why: After the stacking mini-game, the story must resolve the robber-house sequence differently for good and neutral groups.
+// What this does for the code: Builds the post-mini-game pages, including crash, feast, night, robber return, and ending pages.
+// Codependencies and why/where: Called by drawFade(); depends on resultType, companions, joinedCompanions(), neutralAnimalImage(), and page().
+// Why these values: The good branch uses all four animals, while neutral inserts only the joined animals' scare actions.
 function buildPostMiniPages() {
   if (resultType === "good") {
     return [
@@ -963,6 +1397,10 @@ function buildPostMiniPages() {
   return pagesOut;
 }
 
+// Why: Neutral endings need a final image that matches exactly which animals joined.
+// What this does for the code: Returns the neutral ending asset key for one- or two-companion combinations.
+// Codependencies and why/where: Used by buildPostMiniPages(); depends on companions dog/cat/rooster state.
+// Why these values: The condition order checks two-animal combinations before one-animal fallbacks so the most specific image is chosen.
 function neutralAnimalImage() {
   const dog = companions.dog;
   const cat = companions.cat;
@@ -975,10 +1413,18 @@ function neutralAnimalImage() {
   return "neutralRooster";
 }
 
+// Why: Story screens need a consistent small data shape.
+// What this does for the code: Creates a page object with image, text, textbox position, next route, and continue-hint flag.
+// Codependencies and why/where: Used by all story-builder functions and consumed by drawNarrativePage() and advanceAfterPages().
+// Why these values: Left position is the default text-box placement, null means no automatic route, and false hides legacy continue hints.
 function page(image, text, position = "left", next = null, showContinueHint = false) {
   return { image, text, position, next, showContinueHint };
 }
 
+// Why: The tower mini-game needs fresh state every time it begins or retries.
+// What this does for the code: Copies joined animals into mini-game order, resets stack/progress, spawns the first faller, and enters miniGame mode.
+// Codependencies and why/where: Called by handleLightValue() and performContinueAction(); depends on joinedCompanions(), spawnNextFaller(), and millis().
+// Why these values: DonkeyX 688 starts centered, currentIndex 0 starts with the first companion, and startedAt records timing for state tracking.
 function startMiniGame() {
   const animals = joinedCompanions();
   miniGame = {
@@ -993,6 +1439,10 @@ function startMiniGame() {
   appState = "miniGame";
 }
 
+// Why: Each uncaught companion in the mini-game needs its own falling target.
+// What this does for the code: Creates the current falling animal with horizontal position, vertical start, wave phase, and fall speed.
+// Codependencies and why/where: Called by startMiniGame() and advanceMiniGameFaller(); depends on miniGame.animals and p5 random().
+// Why these values: X range 240-1136 keeps fallers inside the play area, y -80 starts above screen, and speed 2.5 gives catchable motion.
 function spawnNextFaller() {
   const kind = miniGame.animals[miniGame.currentIndex];
   miniGame.faller = {
@@ -1005,6 +1455,10 @@ function spawnNextFaller() {
   };
 }
 
+// Why: The mini-game needs frame-by-frame falling, catching, and missing logic.
+// What this does for the code: Moves the faller, checks whether it overlaps the donkey/tower catch region, and advances to the next animal.
+// Codependencies and why/where: Called by drawMiniGame(); depends on stackTargetY(), MINI_GAME_CATCH_WINDOW, miniGame.donkeyX, and p5 frameCount/sin/abs.
+// Why these values: Horizontal tolerance 150 matches the visual donkey width, and sine amplitude 95 creates motion without making the game unfair.
 function updateMiniGame() {
   if (!miniGame.faller) return;
   const faller = miniGame.faller;
@@ -1022,10 +1476,18 @@ function updateMiniGame() {
   }
 }
 
+// Why: The catch height should rise as the tower grows.
+// What this does for the code: Returns the y coordinate where the next faller should snap onto the current stack.
+// Codependencies and why/where: Used by updateMiniGame(); must match drawStackedDonkeyAndCompanions() vertical spacing.
+// Why these values: 640 is the donkey base, 110 offsets the first companion above the donkey, and 82 is the per-animal stack spacing.
 function stackTargetY(index) {
   return 640 - 110 - index * 82;
 }
 
+// Why: After each catch or miss, the game must either continue or show the result.
+// What this does for the code: Ends the mini-game when all animals have fallen or spawns the next faller.
+// Codependencies and why/where: Called by updateMiniGame(); depends on miniGame.currentIndex, miniGame.animals, and spawnNextFaller().
+// Why these values: The comparison uses >= so the result screen appears once the final animal has been processed.
 function advanceMiniGameFaller() {
   if (miniGame.currentIndex >= miniGame.animals.length) {
     miniGame.faller = null;
@@ -1035,6 +1497,10 @@ function advanceMiniGameFaller() {
   }
 }
 
+// Why: Red button input should share one debounce and visual feedback path.
+// What this does for the code: Rejects invalid states, starts the red-button feedback timer, and delays the actual action until feedback is visible.
+// Codependencies and why/where: Called by parseSerialLine() and keyPressed(); depends on BUTTON_FEEDBACK_MS and performContinueAction().
+// Why these values: Only mainStart, page, and miniResult accept continue; pendingContinue prevents double presses during the brief feedback delay.
 function handleContinueButton() {
   if (pendingContinue || (appState !== "mainStart" && appState !== "page" && appState !== "miniResult")) return;
   continueFeedbackUntil = millis() + BUTTON_FEEDBACK_MS;
@@ -1044,6 +1510,10 @@ function handleContinueButton() {
   }, BUTTON_FEEDBACK_MS);
 }
 
+// Why: The red button does different work depending on which screen is active.
+// What this does for the code: Moves mainStart to start, advances story pages, starts post-mini fade, or retries the mini-game if no animals were caught.
+// Codependencies and why/where: Called by handleContinueButton(); depends on beginAudio(), continueStory(), startMiniGame(), and fade state.
+// Why these values: Mini-result requires at least one caught animal to continue, matching the retry rule.
 function performContinueAction() {
   if (appState === "mainStart") {
     appState = "start";
@@ -1062,6 +1532,10 @@ function performContinueAction() {
   }
 }
 
+// Why: Light sensor readings control the story start and the mini-game start.
+// What this does for the code: Stores a constrained light value and triggers transitions when thresholds are reached.
+// Codependencies and why/where: Called by parseSerialLine() and keyPressed(); depends on LIGHT_START_THRESHOLD and MINI_GAME_LIGHT_THRESHOLD.
+// Why these values: Light values are constrained to Arduino analog range 0-1023 before threshold comparisons.
 function handleLightValue(value) {
   lastLightValue = constrain(value, 0, 1023);
   if (appState === "start" && lastLightValue >= LIGHT_START_THRESHOLD) {
@@ -1070,6 +1544,15 @@ function handleLightValue(value) {
   if (appState === "miniIntro" && lastLightValue >= MINI_GAME_LIGHT_THRESHOLD) startMiniGame();
 }
 
+// Lecturer QA: How the cable and Connect Arduino button work.
+// The Arduino Micro is connected by USB. Pressing the HTML "Connect Arduino" button runs this function,
+// opens the browser Web Serial permission popup, then opens the selected board at the same baud rate as
+// the Arduino code. After that, readSerialLoop() continuously receives button/sensor text from the cable.
+// Values: SERIAL_BAUD_RATE is 9600 (serial communication) and must match Serial.begin(9600) in bremen_musicians.ino.
+// Why: The browser needs explicit user permission before reading Arduino input.
+// What this does for the code: Requests a serial port, opens it at the project baud rate, stores connected state, and starts reading.
+// Codependencies and why/where: Called by setup() connect button; depends on Web Serial API, SERIAL_BAUD_RATE, setSerialStatus(), and readSerialLoop().
+// Why these values: The unavailable message names Chrome/Edge because Web Serial support is expected there for this project.
 async function connectSerial() {
   if (!("serial" in navigator)) {
     setSerialStatus("Serial: Web Serial unavailable. Use Chrome or Edge.");
@@ -1087,6 +1570,10 @@ async function connectSerial() {
   }
 }
 
+// Why: Arduino messages arrive as a stream and must be read continuously.
+// What this does for the code: Decodes serial bytes into text and forwards chunks until the serial connection ends or errors.
+// Codependencies and why/where: Called by connectSerial(); depends on TextDecoderStream, serialPort.readable, and consumeSerialChunk().
+// Why these values: The while loop follows serialConnected so disconnect/error state can stop reading.
 async function readSerialLoop() {
   const decoder = new TextDecoderStream();
   serialPort.readable.pipeTo(decoder.writable).catch(() => {});
@@ -1104,6 +1591,10 @@ async function readSerialLoop() {
   }
 }
 
+// Why: Serial data can split one message across multiple chunks.
+// What this does for the code: Buffers incoming text, extracts complete newline-delimited lines, and parses each full line.
+// Codependencies and why/where: Called by readSerialLoop(); depends on serialBuffer and parseSerialLine().
+// Why these values: The line-break regex accepts both carriage return and newline because Arduino serial monitors commonly use either.
 function consumeSerialChunk(chunk) {
   serialBuffer += chunk;
   let lineBreak = serialBuffer.search(/[\r\n]/);
@@ -1115,6 +1606,14 @@ function consumeSerialChunk(chunk) {
   }
 }
 
+// Lecturer QA: How Arduino messages control the UI.
+// The Arduino sends simple text labels over USB. This function translates those labels into game actions:
+// red continues, green/yellow/white choose options, S controls the slider mini-game, and L controls light gates.
+// Values: B1=red continue, B3=green choice 1, B4=yellow choice 2, B2=white choice 3, S:/L: are 0-1023 analog values.
+// Why: Arduino input needs to become game actions in one controlled place.
+// What this does for the code: Normalizes a serial line, maps button codes to actions, and parses slider/light sensor values.
+// Codependencies and why/where: Called by consumeSerialChunk(); depends on handleContinueButton(), chooseOption(), handleLightValue(), and updateHud().
+// Why these values: B1/red is continue, B3/green is choice 1, B4/yellow is choice 2, B2/white is choice 3, and S:/L: carry analog values.
 function parseSerialLine(line) {
   const normalized = line.trim().toUpperCase();
 
@@ -1138,6 +1637,10 @@ function parseSerialLine(line) {
   updateHud();
 }
 
+// Why: The sketch needs keyboard fallback controls for testing without Arduino hardware.
+// What this does for the code: Maps keyboard keys to continue, choices, slider simulation, and light-sensor simulation.
+// Codependencies and why/where: Called automatically by p5; depends on handleContinueButton(), chooseOption(), handleLightValue(), and updateHud().
+// Why these values: Enter/space mirror red continue, 1-3 mirror choices, A/D or arrows move slider by 55, and L simulates the light threshold.
 function keyPressed() {
   if (keyCode === ENTER || key === " ") handleContinueButton();
   else if (key === "1") chooseOption(0);
@@ -1155,10 +1658,18 @@ function keyPressed() {
   }
 }
 
+// Why: The UI should show whether the Arduino serial connection is working.
+// What this does for the code: Writes a status string into the serial-status element.
+// Codependencies and why/where: Used by connectSerial(), readSerialLoop(), and parseSerialLine(); depends on index.html element id serial-status.
+// Why these values: No numeric values here; the caller supplies the exact status text.
 function setSerialStatus(textValue) {
   document.getElementById("serial-status").textContent = textValue;
 }
 
+// Why: Debugging hardware input is easier when the current sensor values are visible.
+// What this does for the code: Updates the on-page HUD with light and slider readings.
+// Codependencies and why/where: Called after serial and keyboard input changes; depends on index.html element id sensor-status.
+// Why these values: "--" means no light reading has arrived yet, and Math.round keeps slider display readable.
 function updateHud() {
   document.getElementById("sensor-status").textContent =
     `Light: ${lastLightValue ?? "--"} | Slider: ${Math.round(lastSliderValue)}`;
